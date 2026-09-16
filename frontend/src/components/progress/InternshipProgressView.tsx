@@ -8,7 +8,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   TrendingUpIcon,
-  ClipboardCheckIcon,
   MapPinIcon,
   UserIcon,
   ArrowRightIcon,
@@ -47,12 +46,6 @@ export function InternshipProgressView({
 
   const completedTasks = tasks.filter((t) => t.status === "Completed");
   const pendingTasks = tasks.filter((t) => t.status !== "Completed");
-
-  const filteredTasks = tasks.filter((t) => {
-    if (taskFilter === "completed") return t.status === "Completed";
-    if (taskFilter === "pending") return t.status !== "Completed";
-    return true;
-  });
 
   const hoursPct = Math.min(
     100,

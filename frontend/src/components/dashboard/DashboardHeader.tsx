@@ -23,6 +23,9 @@ export function DashboardHeader({ student, internship, onActionClick, onNavigate
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-300">
             {student.department} • {student.university}
+            {internship?.role && (
+              <span className="hidden sm:inline"> • {internship.role} ({internship.company})</span>
+            )}
           </p>
         </div>
 
