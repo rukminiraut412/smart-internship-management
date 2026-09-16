@@ -29,9 +29,11 @@ import {
 import {
   authApi,
   authStorage,
+  BackendInternship,
   healthApi,
   internshipsApi,
   intelligenceApi,
+  studentsApi,
   UserProfile,
 } from "@/lib/api";
 
@@ -92,10 +94,32 @@ export default function StudentDashboardPage() {
   // 3. Fetch Real Backend Data
   const loadBackendData = useCallback(async () => {
     try {
-      // List available internships
-      const backendInternships = await internshipsApi.list();
-      if (backendInternships && backendInternships.length > 0) {
-        const primary = backendInternships[0];
+      let primary: BackendInternship | null = null;
+
+      // Check if logged-in user has registered internships
+      const token = authStorage.getToken();
+      if (token) {
+        try {
+          const me = await authApi.getMe();
+          const studentId = me.student_id || me.id;
+          const studentInternships = await studentsApi.getInternships(studentId);
+          if (studentInternships && studentInternships.length > 0) {
+            primary = studentInternships[0].internship;
+          }
+        } catch {
+          // Token expired or student profile not yet loaded
+        }
+      }
+
+      // If no student-specific internship found, fallback to general listing
+      if (!primary) {
+        const backendInternships = await internshipsApi.list();
+        if (backendInternships && backendInternships.length > 0) {
+          primary = backendInternships[0];
+        }
+      }
+
+      if (primary) {
         setActiveInternshipId(primary.id);
         setInternshipDetails({
           company: primary.company_name || "CloudScale Distributed Systems",
@@ -331,7 +355,13 @@ export default function StudentDashboardPage() {
           )}
 
           {activeTab === "Internship Registration" && (
-            <InternshipRegistrationView />
+            <InternshipRegistrationView
+              studentId={currentUser ? (currentUser.student_id || currentUser.id) : undefined}
+              onRegistrationSuccess={() => {
+                loadBackendData();
+                setActiveTab("Dashboard");
+              }}
+            />
           )}
 
           {activeTab === "Progress" && (

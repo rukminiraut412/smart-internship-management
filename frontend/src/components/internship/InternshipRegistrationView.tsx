@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BriefcaseIcon,
   BuildingOfficeIcon,
@@ -15,6 +15,7 @@ import {
   TrashIcon,
 } from "@/components/common/Icons";
 import { RegisteredInternship, mockStudentData } from "@/data/mockData";
+import { BackendInternship, studentsApi } from "@/lib/api";
 
 const DOMAINS = [
   "Software Engineering & Architecture",
@@ -42,7 +43,15 @@ interface FormErrors {
   mentorPhone?: string;
 }
 
-export function InternshipRegistrationView() {
+interface InternshipRegistrationViewProps {
+  studentId?: string;
+  onRegistrationSuccess?: (internship: BackendInternship) => void;
+}
+
+export function InternshipRegistrationView({
+  studentId,
+  onRegistrationSuccess,
+}: InternshipRegistrationViewProps = {}) {
   const [registrations, setRegistrations] = useState<RegisteredInternship[]>(
     mockStudentData.registeredInternships
   );
@@ -65,6 +74,48 @@ export function InternshipRegistrationView() {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!studentId) return;
+    studentsApi
+      .getInternships(studentId)
+      .then((items) => {
+        if (items && items.length > 0) {
+          const mapped: RegisteredInternship[] = items.map((item) => {
+            const intern = item.internship;
+            return {
+              id: intern.id,
+              companyName: intern.company_name || "Host Organization",
+              internshipTitle: intern.title,
+              domain: intern.domain || "General Engineering",
+              startDate: intern.start_date ? intern.start_date.split("T")[0] : "2026-08-15",
+              endDate: intern.end_date ? intern.end_date.split("T")[0] : "2026-11-07",
+              mode: (intern.mode as "Online" | "Offline" | "Hybrid") || "Hybrid",
+              location: intern.location || "Remote",
+              requiredSkills: ["Engineering", "Development"],
+              description: intern.description || "",
+              mentorName: "Assigned Supervisor",
+              mentorEmail: "supervisor@company.com",
+              mentorPhone: "+1 (555) 000-0000",
+              registrationStatus: (item.application_status === "Approved" ? "Approved" : "Pending Review") as "Approved" | "Pending Review",
+              submittedAt: item.applied_at
+                ? new Date(item.applied_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Recently",
+            };
+          });
+          setRegistrations(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load existing student registrations", err);
+      });
+  }, [studentId]);
 
   const validate = (): boolean => {
     const errs: FormErrors = {};
@@ -150,12 +201,38 @@ export function InternshipRegistrationView() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError(null);
 
-    if (validate()) {
+    if (!validate()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      let createdInternship: BackendInternship | null = null;
+
+      if (studentId) {
+        createdInternship = await studentsApi.registerInternship(studentId, {
+          company_name: formData.companyName.trim(),
+          internship_title: formData.internshipTitle.trim(),
+          domain: formData.domain,
+          start_date: formData.startDate ? `${formData.startDate}T09:00:00` : undefined,
+          end_date: formData.endDate ? `${formData.endDate}T17:00:00` : undefined,
+          mode: formData.mode,
+          location: formData.location.trim(),
+          required_skills: formData.requiredSkills,
+          description: formData.description.trim(),
+          mentor_name: formData.mentorName.trim(),
+          mentor_email: formData.mentorEmail.trim(),
+          mentor_phone: formData.mentorPhone.trim(),
+        });
+      }
+
       const newRegistration: RegisteredInternship = {
-        id: `REG-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: createdInternship?.id || `REG-2026-${Math.floor(1000 + Math.random() * 9000)}`,
         companyName: formData.companyName.trim(),
         internshipTitle: formData.internshipTitle.trim(),
         domain: formData.domain,
@@ -168,7 +245,7 @@ export function InternshipRegistrationView() {
         mentorName: formData.mentorName.trim(),
         mentorEmail: formData.mentorEmail.trim(),
         mentorPhone: formData.mentorPhone.trim(),
-        registrationStatus: "Pending Review",
+        registrationStatus: createdInternship ? "Approved" : "Pending Review",
         submittedAt: new Date().toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -176,9 +253,9 @@ export function InternshipRegistrationView() {
         }),
       };
 
-      setRegistrations([newRegistration, ...registrations]);
+      setRegistrations((prev) => [newRegistration, ...prev]);
       setSuccessNotice(
-        `Internship Registration Submitted Successfully! Assigned ID: ${newRegistration.id}. Pending Academic Coordinator Approval.`
+        `Internship Registration Submitted Successfully! Assigned ID: ${newRegistration.id}. Status: ${newRegistration.registrationStatus}.`
       );
 
       // Reset form
@@ -199,8 +276,22 @@ export function InternshipRegistrationView() {
       });
       setErrors({});
 
+      if (createdInternship && onRegistrationSuccess) {
+        onRegistrationSuccess(createdInternship);
+      }
+
       window.scrollTo({ top: 0, behavior: "smooth" });
-      setTimeout(() => setSuccessNotice(null), 6000);
+      setTimeout(() => setSuccessNotice(null), 8000);
+    } catch (err: unknown) {
+      console.error("Failed to register internship:", err);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to register internship. Please check your connection and try again.";
+      setApiError(msg);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -226,6 +317,14 @@ export function InternshipRegistrationView() {
         <div className="flex items-start space-x-3 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs font-semibold text-emerald-800 shadow-2xs">
           <CheckCircleIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
           <div className="leading-relaxed">{successNotice}</div>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {apiError && (
+        <div className="flex items-start space-x-3 rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 shadow-2xs">
+          <AlertCircleIcon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">{apiError}</div>
         </div>
       )}
 
@@ -550,9 +649,10 @@ export function InternshipRegistrationView() {
           <div className="pt-6 border-t border-slate-100 flex items-center justify-end space-x-3">
             <button
               type="submit"
-              className="w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Submit Registration
+              {isSubmitting ? "Submitting Registration..." : "Submit Registration"}
             </button>
           </div>
         </form>

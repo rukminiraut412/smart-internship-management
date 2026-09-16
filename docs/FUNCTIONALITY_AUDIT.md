@@ -43,10 +43,10 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 | **Progress Attention Engine** | `WORKING` | Pure Python in `intelligence/app` | Embedded in Dashboard & Progress | - |
 | **Skill Gap Engine** | `WORKING` | Pure Python in `intelligence/app` | Embedded in Dashboard | - |
 | **Weekly Report History** | `WORKING` | `GET /api/internships/{id}/reports` | `ReportHistoryList.tsx` | - |
-| **Weekly Report Submission** | `PARTIALLY WORKING` | `POST /api/internships/{id}/reports` | `WeeklyReportForm.tsx` | **CRITICAL** |
+| **Weekly Report Submission** | `RESOLVED (WORKING)` | `POST /api/internships/{id}/reports` | `WeeklyReportForm.tsx` | - |
 | **Student Profile View** | `PARTIALLY WORKING` | None (Backend lacks profile CRUD) | `StudentProfileView.tsx` | **HIGH** |
-| **Internship Registration Form** | `UI ONLY` | `POST /api/internships` (Unlinked) | `InternshipRegistrationView.tsx` | **HIGH** |
-| **Internship Appears on Dashboard**| `BROKEN` | `GET /api/internships` | `InternshipStatusCard.tsx` | **HIGH** |
+| **Internship Registration Form** | `RESOLVED (WORKING)` | `POST /api/students/{id}/register-internship` | `InternshipRegistrationView.tsx` | - |
+| **Internship Appears on Dashboard**| `RESOLVED (WORKING)` | `GET /api/students/{id}/internships` | `InternshipStatusCard.tsx` | - |
 | **Internships Directory** | `UI ONLY` | `GET /api/internships` (Available) | `PlaceholderView.tsx` | **MEDIUM** |
 | **Applications Tracking** | `UI ONLY` | None (`Application` model only) | `PlaceholderView.tsx` | **MEDIUM** |
 | **Notifications & Alerts** | `UI ONLY` | None (`Alert` model only) | `PlaceholderView.tsx` | **LOW** |
@@ -77,21 +77,17 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 
 ---
 
-### Problem 2: Internship Registration Form Does Not Persist or Link to Dashboard
+### Problem 2: Internship Registration Form Does Not Persist or Link to Dashboard [RESOLVED]
 - **Feature Name:** Internship Registration (`InternshipRegistrationView`)
-- **Classification:** `UI ONLY` / `BROKEN` Flow
-- **Current Behavior:** Completing the registration form validates input, generates a local client-side ID (`REG-2026-xxxx`), updates local React state in `InternshipRegistrationView`, but makes no HTTP calls to the backend and does not update `page.tsx`. When navigating back to the Dashboard, the newly submitted internship is absent.
-- **Expected Behavior:** Submitting an internship registration should invoke a backend endpoint, create the internship and/or application records in SQLite, update the active internship on the student dashboard, and allow progress logging against it.
-- **Exact File(s) Responsible:**
-  - `frontend/src/components/internship/InternshipRegistrationView.tsx` (Lines 153-200)
-  - `frontend/src/app/page.tsx` (Lines 307-309)
-  - `backend/app/routers/internships.py` (`create_internship`)
-- **Likely Cause:** `InternshipRegistrationView` was built as a standalone prototype component with mock state before the backend API layer was connected. It does not import or call `internshipsApi`.
-- **Suggested Fix:**
-  1. Add a student internship registration endpoint `POST /api/students/{student_id}/register-internship` in the backend that creates a `Company`, `Internship`, and accepted `Application`.
-  2. Connect `InternshipRegistrationView.tsx` to call this API upon form submit.
-  3. Emit an `onInternshipRegistered` callback to `page.tsx` to refresh `activeInternshipId` and dashboard cards.
-- **Priority:** **HIGH**
+- **Classification:** `RESOLVED (WORKING)`
+- **Status:** **FIXED** (Endpoint `POST /api/students/{id}/register-internship` implemented, connected via `studentsApi.registerInternship`, and student registrations prioritized on dashboard).
+- **Resolution Summary:**
+  1. Implemented authenticated endpoint `POST /api/students/{student_id}/register-internship` in `backend/app/routers/students.py` that resolves `Student` by `id` or `user_id`, verifies authorization, creates `Company`, `Internship` with status `Active`, links `Skill` tags via `InternshipSkill`, and creates an approved `Application`.
+  2. Updated `backend/app/schemas.py` with `StudentInternshipRegisterRequest`.
+  3. Added `registerInternship` in `frontend/src/lib/api.ts`.
+  4. Updated `InternshipRegistrationView.tsx` to dispatch `studentsApi.registerInternship` and load real placement history.
+  5. Updated `frontend/src/app/page.tsx` so `loadBackendData` checks student-specific internships first and updates dashboard immediately upon registration.
+- **Priority:** **RESOLVED**
 
 ---
 
@@ -156,10 +152,10 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 | **2. Student Dashboard** | View 6 KPI cards, active internship banner, and system status | Loads active placement (`Backend Engineering Intern` at `CloudScale`), tasks count (5), reports count (5), attention card (`ON_TRACK`), and skill match (60%). | **PASS (WORKING)** |
 | **3. My Profile** | Navigate to "My Profile" → Edit Bio, GPA, Skills → Save | Form validates; local state updates; changes display in UI immediately. However, changes are lost on page refresh (no backend persistence). | **PARTIAL (UI ONLY PERSISTENCE)** |
 | **4. Internship Registration** | Navigate to "Internship Registration" → Fill form | All inputs, tags, and validations function cleanly. | **PASS (WORKING UI)** |
-| **5. Submit Internship** | Click "Submit Internship Registration" | Adds item to local component table with ID `REG-2026-xxxx`. No backend API request generated. | **FAIL (UI ONLY)** |
-| **6. Appears on Dashboard** | Return to "Dashboard" tab to verify new internship | Dashboard continues displaying previous seeded internship. Newly registered internship is ignored. | **FAIL (BROKEN FLOW)** |
+| **5. Submit Internship** | Click "Submit Internship Registration" | Invokes `POST /api/students/{id}/register-internship`. Persists Company, Internship, Skills, and approved Application in SQLite with HTTP 201. | **PASS (WORKING)** |
+| **6. Appears on Dashboard** | Return to "Dashboard" tab to verify new internship | Dashboard displays registered company, role, location, and dates immediately; persists across page reload. | **PASS (WORKING)** |
 | **7. Weekly Report View** | Navigate to "Weekly Reports" tab | Timeline, current week (Week 5), report history list, and submission form render cleanly. | **PASS (WORKING)** |
-| **8. Submit Weekly Report** | Fill week details, hours (20), learnings, blockers → Submit | If using frontend client directly, fails with HTTP 404 (`user_id` passed instead of `student_id`). If tested via direct API with `student_id`, succeeds with HTTP 201. | **FAIL IN UI / PASS IN DIRECT API** |
+| **8. Submit Weekly Report** | Fill week details, hours (20), learnings, blockers → Submit | Authenticated student submits report via `POST /api/internships/{id}/reports`. Succeeds with HTTP 201; resolves `user_id` to `student_id`. | **PASS (WORKING)** |
 | **9. Progress Attention** | Evaluate attention via rule-based intelligence engine | Deterministic 4-factor scoring computes weighted 80.8 score, assigns status `ON_TRACK`, outputs clear reasons and recommendations. | **PASS (WORKING)** |
 | **10. Skill Gap** | Evaluate student skills against backend role requirements | Matches 3 skills (`Python`, `FastAPI`, `Docker`), identifies 2 missing (`Kubernetes`, `PostgreSQL`), calculates 60% match and recommendation. | **PASS (WORKING)** |
 
@@ -169,7 +165,7 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 
 FastAPI version: `0.141.1` | OpenAPI Docs: `/api/docs` | Base URL: `http://localhost:8000`
 
-### Implemented & Verified Endpoints (15 Total)
+### Implemented & Verified Endpoints (16 Total)
 
 | Method | Route | Purpose | Verified Status |
 |---|---|---|---|
@@ -184,6 +180,7 @@ FastAPI version: `0.141.1` | OpenAPI Docs: `/api/docs` | Base URL: `http://local
 | `POST` | `/api/internships/{id}/reports` | Submit weekly progress report | **PASS (201)** |
 | `GET` | `/api/internships/{id}/reports` | Retrieve weekly reports for internship | **PASS (200)** |
 | `GET` | `/api/students/{id}/internships` | Retrieve student placements via applications | **PASS (200)** |
+| `POST` | `/api/students/{id}/register-internship` | Register placement, company, skills & approved application | **PASS (201)** |
 | `POST` | `/api/intelligence/skill-gap` | Deterministic skill gap comparison | **PASS (200)** |
 | `GET` | `/api/intelligence/skill-gap/{id}` | DB-linked skill gap comparison | **PASS (200)** |
 | `POST` | `/api/intelligence/evaluate-attention`| Deterministic 4-factor progress attention | **PASS (200)** |

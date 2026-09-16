@@ -2,8 +2,8 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # ============================================================================
@@ -152,6 +152,51 @@ class StudentInternshipItem(BaseModel):
     internship: InternshipResponse
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StudentInternshipRegisterRequest(BaseModel):
+    """Schema for a student registering an off-campus or institutional internship placement."""
+    company_name: str = Field(..., min_length=2, max_length=255, description="Name of company or host organization")
+    internship_title: str = Field(..., min_length=2, max_length=255, description="Official role title of the internship")
+    domain: Optional[str] = Field(default=None, max_length=255, description="Domain or discipline (e.g. Cloud, AI, Web)")
+    start_date: Optional[datetime] = Field(default=None, description="Start date of the internship")
+    end_date: Optional[datetime] = Field(default=None, description="End date of the internship")
+    mode: str = Field(default="Hybrid", description="Online, Offline, or Hybrid")
+    location: Optional[str] = Field(default=None, max_length=255, description="Work location or Remote")
+    required_skills: List[str] = Field(default_factory=list, description="Key skills and technologies used")
+    description: Optional[str] = Field(default=None, description="Job description or scope of work")
+    mentor_name: Optional[str] = Field(default=None, max_length=255, description="Host supervisor or mentor name")
+    mentor_email: Optional[str] = Field(default=None, max_length=255, description="Supervisor official email")
+    mentor_phone: Optional[str] = Field(default=None, max_length=50, description="Supervisor contact phone")
+    stipend: Optional[str] = Field(default=None, max_length=100, description="Stipend information")
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def parse_empty_date(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "company_name": "Acme Technologies",
+                "internship_title": "Backend Engineering Intern",
+                "domain": "Software Engineering & Architecture",
+                "start_date": "2026-09-01T00:00:00",
+                "end_date": "2026-12-01T00:00:00",
+                "mode": "Hybrid",
+                "location": "Seattle, WA / Remote",
+                "required_skills": ["Python", "FastAPI", "Docker"],
+                "description": "Designing and deploying backend services.",
+                "mentor_name": "Dr. Marcus Vance",
+                "mentor_email": "m.vance@cloudscale.io",
+                "mentor_phone": "+1 (555) 441-2099",
+                "stipend": "$1,800 / month",
+            }
+        }
+    )
+
 
 
 # ============================================================================

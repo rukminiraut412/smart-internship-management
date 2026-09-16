@@ -282,10 +282,36 @@ export const internshipsApi = {
   },
 };
 
+export interface StudentInternshipRegisterPayload {
+  company_name: string;
+  internship_title: string;
+  domain?: string;
+  start_date?: string;
+  end_date?: string;
+  mode?: "Online" | "Offline" | "Hybrid";
+  location?: string;
+  required_skills?: string[];
+  description?: string;
+  mentor_name?: string;
+  mentor_email?: string;
+  mentor_phone?: string;
+  stipend?: string;
+}
+
 /** 3. STUDENTS API */
 export const studentsApi = {
   getInternships: async (studentId: string): Promise<StudentInternshipItem[]> => {
     return apiRequest<StudentInternshipItem[]>(`/api/students/${studentId}/internships`);
+  },
+
+  registerInternship: async (
+    studentId: string,
+    payload: StudentInternshipRegisterPayload
+  ): Promise<BackendInternship> => {
+    return apiRequest<BackendInternship>(`/api/students/${studentId}/register-internship`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   },
 };
 
