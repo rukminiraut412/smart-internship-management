@@ -1,9 +1,19 @@
-"""Main application entry point for the Smart Internship Management FastAPI backend."""
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.database import init_db
+from app.routers.auth import router as auth_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup and shutdown events."""
+    # Ensure all tables are created on startup
+    init_db()
+    yield
+
 
 # Initialize FastAPI application with configuration metadata
 app = FastAPI(
@@ -13,7 +23,10 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
+
+
 
 # Configure Cross-Origin Resource Sharing (CORS) for frontend clients
 app.add_middleware(
@@ -23,6 +36,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API routers
+app.include_router(auth_router, prefix=settings.API_V1_STR)
+
 
 
 @app.get(
