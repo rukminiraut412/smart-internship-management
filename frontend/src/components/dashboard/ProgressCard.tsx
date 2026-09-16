@@ -4,9 +4,10 @@ import { ProgressSummary } from "@/data/mockData";
 
 interface Props {
   progress: ProgressSummary;
+  onNavigateToProgress?: () => void;
 }
 
-export function ProgressCard({ progress }: Props) {
+export function ProgressCard({ progress, onNavigateToProgress }: Props) {
   const hoursPct = Math.min(100, Math.round((progress.hoursCompleted / progress.targetHours) * 100));
 
   return (
@@ -71,6 +72,18 @@ export function ProgressCard({ progress }: Props) {
             <div className="text-xs font-bold text-slate-800">{progress.targetHours - progress.hoursCompleted} hrs</div>
           </div>
         </div>
+
+        {onNavigateToProgress && (
+          <div className="pt-2 border-t border-slate-100 flex justify-end">
+            <button
+              type="button"
+              onClick={onNavigateToProgress}
+              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+            >
+              View Full Progress Timeline →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

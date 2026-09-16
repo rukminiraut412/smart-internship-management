@@ -7,6 +7,7 @@ import {
   BriefcaseIcon,
   ClipboardCheckIcon,
   TrendingUpIcon,
+  DocumentTextIcon,
   TargetIcon,
   BellIcon,
   XIcon,
@@ -28,6 +29,7 @@ export const navItems: NavItem[] = [
   { id: "Internships", label: "Internships", icon: BriefcaseIcon },
   { id: "Applications", label: "Applications", icon: ClipboardCheckIcon },
   { id: "Progress", label: "Progress", icon: TrendingUpIcon },
+  { id: "Weekly Reports", label: "Weekly Reports", badge: "Week 5", badgeColor: "bg-emerald-100 text-emerald-800", icon: DocumentTextIcon },
   { id: "Skill Gap", label: "Skill Gap", icon: TargetIcon },
   { id: "Notifications", label: "Notifications", badge: "2", badgeColor: "bg-amber-100 text-amber-800", icon: BellIcon },
 ];
