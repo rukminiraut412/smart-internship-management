@@ -44,7 +44,7 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 | **Skill Gap Engine** | `WORKING` | Pure Python in `intelligence/app` | Embedded in Dashboard | - |
 | **Weekly Report History** | `WORKING` | `GET /api/internships/{id}/reports` | `ReportHistoryList.tsx` | - |
 | **Weekly Report Submission** | `RESOLVED (WORKING)` | `POST /api/internships/{id}/reports` | `WeeklyReportForm.tsx` | - |
-| **Student Profile View** | `PARTIALLY WORKING` | None (Backend lacks profile CRUD) | `StudentProfileView.tsx` | **HIGH** |
+| **Student Profile View** | `RESOLVED (WORKING)` | `GET /api/students/{id}`, `PUT /api/students/{id}` | `StudentProfileView.tsx` | - |
 | **Internship Registration Form** | `RESOLVED (WORKING)` | `POST /api/students/{id}/register-internship` | `InternshipRegistrationView.tsx` | - |
 | **Internship Appears on Dashboard**| `RESOLVED (WORKING)` | `GET /api/students/{id}/internships` | `InternshipStatusCard.tsx` | - |
 | **Internships Directory** | `UI ONLY` | `GET /api/internships` (Available) | `PlaceholderView.tsx` | **MEDIUM** |
@@ -91,20 +91,17 @@ A rigorous, code-level and runtime functionality audit was conducted across all 
 
 ---
 
-### Problem 3: Student Profile Modifications Are Volatile
+### Problem 3: Student Profile Modifications Are Volatile [RESOLVED]
 - **Feature Name:** Student Profile Management (`StudentProfileView`)
-- **Classification:** `PARTIALLY WORKING`
-- **Current Behavior:** A student can edit their bio, contact details, college, GPA, skills, and simulated resume in the UI. Saving the form updates the local React state, which propagates up to `page.tsx` for the current session. However, refreshing the browser or checking the backend reveals that none of the changes were persisted.
-- **Expected Behavior:** Profile edits should be saved to the database (`students` and `student_skills` tables) and reloaded whenever the student logs in.
-- **Exact File(s) Responsible:**
-  - `frontend/src/components/profile/StudentProfileView.tsx` (Lines 99-110)
-  - `backend/app/routers/students.py`
-- **Likely Cause:** `backend/app/routers/students.py` lacks `PUT /api/students/{id}` and `GET /api/students/{id}` endpoints. The frontend has no API method in `frontend/src/lib/api.ts` to push profile updates.
-- **Suggested Fix:**
-  1. Implement `GET /api/students/{id}` and `PUT /api/students/{id}` in `backend/app/routers/students.py`.
-  2. Implement skill association management endpoints for `student_skills`.
-  3. Add `studentsApi.updateProfile` in `frontend/src/lib/api.ts` and invoke it from `StudentProfileView.handleSaveEdit`.
-- **Priority:** **HIGH**
+- **Classification:** `RESOLVED (WORKING)`
+- **Status:** **FIXED** (Endpoints `GET /api/students/{id}` and `PUT /api/students/{id}` implemented, connected via `studentsApi.getProfile` and `studentsApi.updateProfile`, with full database persistence and skill preservation).
+- **Resolution Summary:**
+  1. Implemented authenticated `GET /api/students/{student_id}` and `PUT /api/students/{student_id}` in `backend/app/routers/students.py` that resolve `Student` by `id` or `user_id`, check authorization, persist updates to `User` and `Student` tables, and synchronize `StudentSkill` association records.
+  2. Updated `backend/app/schemas.py` with `StudentProfileResponse` and `StudentProfileUpdateRequest`.
+  3. Added `getProfile` and `updateProfile` methods in `frontend/src/lib/api.ts`.
+  4. Updated `StudentProfileView.tsx` to load profile data on mount, save modifications to backend on submit, and display success/error alerts.
+  5. Updated `frontend/src/app/page.tsx` to load backend profile on session initialization and pass `studentId` to `StudentProfileView`.
+- **Priority:** **RESOLVED**
 
 ---
 

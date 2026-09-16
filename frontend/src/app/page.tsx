@@ -81,11 +81,32 @@ export default function StudentDashboardPage() {
     try {
       const user = await authApi.getMe();
       setCurrentUser(user);
-      setStudentProfile((prev) => ({
-        ...prev,
-        name: user.full_name,
-        email: user.email,
-      }));
+
+      const studentId = user.student_id || user.id;
+      try {
+        const backendProfile = await studentsApi.getProfile(studentId);
+        if (backendProfile) {
+          setStudentProfile((prev) => ({
+            ...prev,
+            name: backendProfile.name || user.full_name,
+            email: backendProfile.email || user.email,
+            studentId: backendProfile.student_id_number || prev.studentId,
+            phone: backendProfile.phone || prev.phone,
+            college: backendProfile.college || prev.college,
+            university: backendProfile.university || prev.university,
+            department: backendProfile.department || prev.department,
+            year: backendProfile.year_of_study || prev.year,
+            gpa: backendProfile.gpa !== null && backendProfile.gpa !== undefined ? backendProfile.gpa : prev.gpa,
+            skills: backendProfile.skills && backendProfile.skills.length > 0 ? backendProfile.skills : prev.skills,
+          }));
+        }
+      } catch {
+        setStudentProfile((prev) => ({
+          ...prev,
+          name: user.full_name,
+          email: user.email,
+        }));
+      }
     } catch {
       setCurrentUser(null);
     }
@@ -245,13 +266,34 @@ export default function StudentDashboardPage() {
     setActiveTab("Weekly Reports");
   };
 
-  const handleAuthSuccess = (user: UserProfile) => {
+  const handleAuthSuccess = async (user: UserProfile) => {
     setCurrentUser(user);
     setStudentProfile((prev) => ({
       ...prev,
       name: user.full_name,
       email: user.email,
     }));
+    const studentId = user.student_id || user.id;
+    try {
+      const backendProfile = await studentsApi.getProfile(studentId);
+      if (backendProfile) {
+        setStudentProfile((prev) => ({
+          ...prev,
+          name: backendProfile.name || user.full_name,
+          email: backendProfile.email || user.email,
+          studentId: backendProfile.student_id_number || prev.studentId,
+          phone: backendProfile.phone || prev.phone,
+          college: backendProfile.college || prev.college,
+          university: backendProfile.university || prev.university,
+          department: backendProfile.department || prev.department,
+          year: backendProfile.year_of_study || prev.year,
+          gpa: backendProfile.gpa !== null && backendProfile.gpa !== undefined ? backendProfile.gpa : prev.gpa,
+          skills: backendProfile.skills && backendProfile.skills.length > 0 ? backendProfile.skills : prev.skills,
+        }));
+      }
+    } catch {
+      // Keep basic profile
+    }
     loadBackendData();
   };
 
@@ -350,6 +392,7 @@ export default function StudentDashboardPage() {
           {activeTab === "My Profile" && (
             <StudentProfileView
               initialProfile={studentProfile}
+              studentId={currentUser ? (currentUser.student_id || currentUser.id) : undefined}
               onProfileUpdate={setStudentProfile}
             />
           )}

@@ -1,15 +1,27 @@
 """Student-related API endpoints."""
 
+from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Application, Company, Internship, InternshipSkill, Skill, Student, User
+from app.models import (
+    Application,
+    Company,
+    Internship,
+    InternshipSkill,
+    Skill,
+    Student,
+    StudentSkill,
+    User,
+)
 from app.schemas import (
     InternshipResponse,
     StudentInternshipItem,
     StudentInternshipRegisterRequest,
+    StudentProfileResponse,
+    StudentProfileUpdateRequest,
 )
 from app.security import get_current_user
 
@@ -17,6 +29,169 @@ router = APIRouter(
     prefix="/students",
     tags=["Students"],
 )
+
+
+@router.get(
+    "/{student_id}",
+    response_model=StudentProfileResponse,
+    summary="Get student profile",
+    description="Retrieve student profile details, academic records, and skills.",
+)
+def get_student_profile(
+    student_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retrieve detailed student profile."""
+    student = (
+        db.query(Student)
+        .filter((Student.id == student_id) | (Student.user_id == student_id))
+        .first()
+    )
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID '{student_id}' not found",
+        )
+
+    # Authorization: student can view only their own profile, or mentor/admin
+    if (
+        student.user_id != current_user.id
+        and current_user.role not in ["admin", "mentor"]
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to view this student profile",
+        )
+
+    skill_names = [ss.skill.name for ss in student.student_skills if ss.skill]
+
+    return StudentProfileResponse(
+        id=student.id,
+        user_id=student.user_id,
+        name=student.user.full_name if student.user else "",
+        email=student.user.email if student.user else "",
+        student_id_number=student.student_id_number,
+        phone=student.phone,
+        college=student.college,
+        university=student.university,
+        department=student.department,
+        year_of_study=student.year_of_study,
+        gpa=student.gpa,
+        resume_url=student.resume_url,
+        skills=skill_names,
+        created_at=student.created_at,
+        updated_at=student.updated_at,
+    )
+
+
+@router.put(
+    "/{student_id}",
+    response_model=StudentProfileResponse,
+    summary="Update student profile",
+    description="Update student academic information, contact details, bio, and associated skills.",
+)
+def update_student_profile(
+    student_id: str,
+    payload: StudentProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update student profile and associated skills."""
+    student = (
+        db.query(Student)
+        .filter((Student.id == student_id) | (Student.user_id == student_id))
+        .first()
+    )
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID '{student_id}' not found",
+        )
+
+    # Authorization: only the student owner or admin can update
+    if student.user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to update this student profile",
+        )
+
+    # Update User full_name if provided
+    if payload.name is not None and student.user:
+        student.user.full_name = payload.name.strip()
+
+    # Update Student fields if provided
+    if payload.phone is not None:
+        student.phone = payload.phone.strip() if payload.phone.strip() else None
+    if payload.college is not None:
+        student.college = payload.college.strip() if payload.college.strip() else None
+    if payload.university is not None:
+        student.university = payload.university.strip() if payload.university.strip() else None
+    if payload.department is not None:
+        student.department = payload.department.strip() if payload.department.strip() else None
+    if payload.year_of_study is not None:
+        student.year_of_study = payload.year_of_study.strip() if payload.year_of_study.strip() else None
+    if payload.gpa is not None:
+        student.gpa = payload.gpa
+    if payload.resume_url is not None:
+        student.resume_url = payload.resume_url.strip() if payload.resume_url.strip() else None
+
+    student.updated_at = datetime.utcnow()
+
+    # Update StudentSkill associations if skills list is provided
+    if payload.skills is not None:
+        current_skills_map = {
+            ss.skill.name.lower(): ss
+            for ss in student.student_skills
+            if ss.skill
+        }
+        new_skill_names_lower = {s.strip().lower() for s in payload.skills if s.strip()}
+
+        # Remove skills not in new list
+        for lower_name, ss in list(current_skills_map.items()):
+            if lower_name not in new_skill_names_lower:
+                db.delete(ss)
+
+        # Add newly specified skills, preserving existing ones
+        for skill_name in payload.skills:
+            clean_name = skill_name.strip()
+            if not clean_name:
+                continue
+            if clean_name.lower() not in current_skills_map:
+                skill = db.query(Skill).filter(Skill.name.ilike(clean_name)).first()
+                if not skill:
+                    skill = Skill(name=clean_name, category="General")
+                    db.add(skill)
+                    db.flush()
+                new_ss = StudentSkill(
+                    student_id=student.id,
+                    skill_id=skill.id,
+                    proficiency_level="Intermediate",
+                )
+                db.add(new_ss)
+
+    db.commit()
+    db.refresh(student)
+
+    skill_names = [ss.skill.name for ss in student.student_skills if ss.skill]
+
+    return StudentProfileResponse(
+        id=student.id,
+        user_id=student.user_id,
+        name=student.user.full_name if student.user else "",
+        email=student.user.email if student.user else "",
+        student_id_number=student.student_id_number,
+        phone=student.phone,
+        college=student.college,
+        university=student.university,
+        department=student.department,
+        year_of_study=student.year_of_study,
+        gpa=student.gpa,
+        resume_url=student.resume_url,
+        skills=skill_names,
+        created_at=student.created_at,
+        updated_at=student.updated_at,
+    )
 
 
 @router.get(

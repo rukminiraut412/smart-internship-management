@@ -298,8 +298,52 @@ export interface StudentInternshipRegisterPayload {
   stipend?: string;
 }
 
+export interface BackendStudentProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  student_id_number?: string;
+  phone?: string;
+  college?: string;
+  university?: string;
+  department?: string;
+  year_of_study?: string;
+  gpa?: number;
+  resume_url?: string;
+  skills: string[];
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface StudentProfileUpdatePayload {
+  name?: string;
+  phone?: string;
+  college?: string;
+  university?: string;
+  department?: string;
+  year_of_study?: string;
+  gpa?: number;
+  resume_url?: string;
+  skills?: string[];
+}
+
 /** 3. STUDENTS API */
 export const studentsApi = {
+  getProfile: async (studentId: string): Promise<BackendStudentProfile> => {
+    return apiRequest<BackendStudentProfile>(`/api/students/${studentId}`);
+  },
+
+  updateProfile: async (
+    studentId: string,
+    payload: StudentProfileUpdatePayload
+  ): Promise<BackendStudentProfile> => {
+    return apiRequest<BackendStudentProfile>(`/api/students/${studentId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+
   getInternships: async (studentId: string): Promise<StudentInternshipItem[]> => {
     return apiRequest<StudentInternshipItem[]>(`/api/students/${studentId}/internships`);
   },

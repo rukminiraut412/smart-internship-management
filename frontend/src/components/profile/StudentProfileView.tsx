@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   UserIcon,
   MailIcon,
@@ -15,9 +15,11 @@ import {
   TrashIcon,
 } from "@/components/common/Icons";
 import { StudentProfile } from "@/data/mockData";
+import { studentsApi } from "@/lib/api";
 
 interface Props {
   initialProfile: StudentProfile;
+  studentId?: string;
   onProfileUpdate?: (updated: StudentProfile) => void;
 }
 
@@ -31,13 +33,15 @@ interface FormErrors {
   skills?: string;
 }
 
-export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
+export function StudentProfileView({ initialProfile, studentId, onProfileUpdate }: Props) {
   const [profile, setProfile] = useState<StudentProfile>(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<StudentProfile>(initialProfile);
   const [newSkillInput, setNewSkillInput] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [resumeUploadedNotice, setResumeUploadedNotice] = useState<string | null>(null);
 
   // Validation function
@@ -83,29 +87,129 @@ export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
     return Object.keys(errs).length === 0;
   };
 
+  useEffect(() => {
+    if (!studentId) return;
+    studentsApi
+      .getProfile(studentId)
+      .then((res) => {
+        if (res) {
+          const mapped: StudentProfile = {
+            name: res.name || initialProfile.name,
+            studentId: res.student_id_number || initialProfile.studentId,
+            email: res.email || initialProfile.email,
+            phone: res.phone || initialProfile.phone,
+            college: res.college || initialProfile.college,
+            university: res.university || initialProfile.university,
+            department: res.department || initialProfile.department,
+            year: res.year_of_study || initialProfile.year,
+            gpa: res.gpa !== null && res.gpa !== undefined ? res.gpa : initialProfile.gpa,
+            avatarInitials: (res.name || initialProfile.name)
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2),
+            skills: res.skills && res.skills.length > 0 ? res.skills : initialProfile.skills,
+            resume: {
+              fileName: res.resume_url ? res.resume_url.split("/").pop() || "Resume_2026.pdf" : initialProfile.resume.fileName,
+              status: initialProfile.resume.status,
+              uploadDate: initialProfile.resume.uploadDate,
+              fileSize: initialProfile.resume.fileSize,
+            },
+          };
+          setProfile(mapped);
+          setFormData(mapped);
+          if (onProfileUpdate) {
+            onProfileUpdate(mapped);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch student profile from backend:", err);
+      });
+  }, [studentId, initialProfile, onProfileUpdate]);
+
   const handleStartEdit = () => {
     setFormData({ ...profile });
     setErrors({});
     setSuccessMessage(null);
+    setApiError(null);
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
     setFormData({ ...profile });
     setErrors({});
+    setApiError(null);
     setIsEditing(false);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm(formData)) {
+    setApiError(null);
+    if (!validateForm(formData)) {
+      return;
+    }
+
+    if (!studentId) {
       setProfile(formData);
       if (onProfileUpdate) {
         onProfileUpdate(formData);
       }
       setIsEditing(false);
-      setSuccessMessage("Student profile updated successfully!");
+      setSuccessMessage("Student profile updated locally (not authenticated)!");
       setTimeout(() => setSuccessMessage(null), 4000);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await studentsApi.updateProfile(studentId, {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        college: formData.college.trim(),
+        university: formData.university.trim(),
+        department: formData.department.trim(),
+        year_of_study: formData.year.trim(),
+        gpa: formData.gpa,
+        skills: formData.skills,
+        resume_url: formData.resume.fileName,
+      });
+
+      const updated: StudentProfile = {
+        name: res.name || formData.name,
+        studentId: res.student_id_number || formData.studentId,
+        email: res.email || formData.email,
+        phone: res.phone || formData.phone,
+        college: res.college || formData.college,
+        university: res.university || formData.university,
+        department: res.department || formData.department,
+        year: res.year_of_study || formData.year,
+        gpa: res.gpa !== null && res.gpa !== undefined ? res.gpa : formData.gpa,
+        avatarInitials: (res.name || formData.name)
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2),
+        skills: res.skills && res.skills.length > 0 ? res.skills : formData.skills,
+        resume: formData.resume,
+      };
+
+      setProfile(updated);
+      setFormData(updated);
+      if (onProfileUpdate) {
+        onProfileUpdate(updated);
+      }
+      setIsEditing(false);
+      setSuccessMessage("Student profile updated and saved to database successfully!");
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err: unknown) {
+      console.error("Failed to update student profile:", err);
+      const msg = err instanceof Error ? err.message : "Failed to update profile. Please try again.";
+      setApiError(msg);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -160,6 +264,13 @@ export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
         </div>
       )}
 
+      {apiError && (
+        <div className="flex items-center space-x-2 rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 shadow-2xs">
+          <AlertCircleIcon className="w-5 h-5 text-rose-600 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
       {resumeUploadedNotice && (
         <div className="flex items-center space-x-2 rounded-xl bg-indigo-50 border border-indigo-200 p-4 text-xs font-semibold text-indigo-800 shadow-2xs">
           <CheckCircleIcon className="w-5 h-5 text-indigo-600 shrink-0" />
@@ -209,9 +320,10 @@ export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
                 <button
                   type="button"
                   onClick={handleSaveEdit}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
+                  disabled={isSaving}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             )}
@@ -517,9 +629,10 @@ export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors"
+                disabled={isSaving}
+                className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Profile
+                {isSaving ? "Saving Profile..." : "Save Profile"}
               </button>
             </div>
           </form>

@@ -198,6 +198,60 @@ class StudentInternshipRegisterRequest(BaseModel):
     )
 
 
+# ============================================================================
+# STUDENT PROFILE SCHEMAS
+# ============================================================================
+
+class StudentProfileResponse(BaseModel):
+    """Schema representing detailed student profile information."""
+    id: str
+    user_id: str
+    name: str
+    email: str
+    student_id_number: Optional[str] = None
+    phone: Optional[str] = None
+    college: Optional[str] = None
+    university: Optional[str] = None
+    department: Optional[str] = None
+    year_of_study: Optional[str] = None
+    gpa: Optional[float] = None
+    resume_url: Optional[str] = None
+    skills: List[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StudentProfileUpdateRequest(BaseModel):
+    """Schema for updating student profile information."""
+    name: Optional[str] = Field(default=None, min_length=2, max_length=255, description="Full name of the student")
+    phone: Optional[str] = Field(default=None, max_length=50, description="Contact phone number")
+    college: Optional[str] = Field(default=None, max_length=255, description="College or school name")
+    university: Optional[str] = Field(default=None, max_length=255, description="University name")
+    department: Optional[str] = Field(default=None, max_length=255, description="Academic department")
+    year_of_study: Optional[str] = Field(default=None, max_length=100, description="Current academic year / cohort")
+    gpa: Optional[float] = Field(default=None, ge=0.0, le=10.0, description="Grade point average")
+    resume_url: Optional[str] = Field(default=None, max_length=500, description="URL or filename of student resume")
+    skills: Optional[List[str]] = Field(default=None, description="List of skill names")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "name": "Alex Rivera",
+                "phone": "+1 (555) 382-9014",
+                "college": "School of Engineering & Applied Sciences",
+                "university": "State Institute of Technology",
+                "department": "Department of Computer Science & Engineering",
+                "year_of_study": "Final Year (Semester 7 - 2026)",
+                "gpa": 3.90,
+                "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "Git & GitHub", "React"],
+            }
+        }
+    )
+
+
+
 
 # ============================================================================
 # PROGRESS REPORT SCHEMAS
