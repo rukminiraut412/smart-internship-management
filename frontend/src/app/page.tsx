@@ -47,14 +47,20 @@ export default function StudentDashboardPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] =
     useState<boolean>(false);
 
+  // --------------------------------------------------
   // Backend & authentication
+  // --------------------------------------------------
+
   const [backendConnected, setBackendConnected] =
     useState<boolean>(false);
 
   const [currentUser, setCurrentUser] =
     useState<UserProfile | null>(null);
 
+  // --------------------------------------------------
   // Application data
+  // --------------------------------------------------
+
   const [studentProfile, setStudentProfile] =
     useState<StudentProfile>(mockStudentData.student);
 
@@ -103,7 +109,7 @@ export default function StudentDashboardPage() {
 
     if (!token) {
       setCurrentUser(null);
-      return;
+      return null;
     }
 
     try {
@@ -116,8 +122,11 @@ export default function StudentDashboardPage() {
         name: user.full_name,
         email: user.email,
       }));
+
+      return user;
     } catch {
       setCurrentUser(null);
+      return null;
     }
   }, []);
 
@@ -125,197 +134,219 @@ export default function StudentDashboardPage() {
   // Load Backend Data
   // --------------------------------------------------
 
-  const loadBackendData = useCallback(async () => {
-    try {
-      const backendInternships = await internshipsApi.list();
-
-      if (backendInternships && backendInternships.length > 0) {
-        const primary = backendInternships[0];
-
-        setActiveInternshipId(primary.id);
-
-        setInternshipDetails({
-          company:
-            primary.company_name ||
-            "CloudScale Distributed Systems",
-
-          role: primary.title,
-
-          mentor: "Dr. Marcus Vance",
-
-          mentorTitle: "Staff Systems Architect",
-
-          mentorEmail: "m.vance@cloudscale.io",
-
-          location:
-            primary.location ||
-            "Seattle, WA / Remote",
-
-          term: "Fall 2026 Cohort",
-
-          startDate: primary.start_date
-            ? primary.start_date.split("T")[0]
-            : "Aug 15, 2026",
-
-          endDate: primary.end_date
-            ? primary.end_date.split("T")[0]
-            : "Nov 07, 2026",
-
-          status:
-            primary.status === "Open"
-              ? "Active"
-              : "Active",
-
-          stipend:
-            primary.stipend ||
-            "$1,800 / month",
-        });
-
-        // ----------------------------------------------
-        // Weekly Reports
-        // ----------------------------------------------
-
-        try {
-          const backendReports =
-            await internshipsApi.listReports(primary.id);
-
-          if (
-            backendReports &&
-            backendReports.length > 0
-          ) {
-            const mappedReports: ReportItem[] =
-              backendReports.map((r) => ({
-                week: r.week_number,
-
-                status:
-                  r.status === "Approved"
-                    ? "Approved"
-                    : "Pending Submission",
-
-                hoursLogged: r.hours_logged,
-
-                mentorScore: r.mentor_score,
-
-                submissionDate: r.submission_date
-                  ? r.submission_date.split("T")[0]
-                  : undefined,
-              }));
-
-            setReportsList(mappedReports);
-          }
-        } catch {
-          // Keep mock reports if backend report loading fails
-        }
-
-        // ----------------------------------------------
-        // Skill Gap Intelligence
-        // ----------------------------------------------
-
-        try {
-          const skillGap =
-            await intelligenceApi.getInternshipSkillGap(
-              primary.id
-            );
-
-          if (skillGap) {
-            const mappedSkills: SkillMatchItem[] = [
-              ...skillGap.matched_skills.map((skill) => ({
-                skill,
-
-                studentLevel:
-                  "Advanced" as const,
-
-                requiredLevel:
-                  "Intermediate" as const,
-
-                matchStatus:
-                  "Met" as const,
-
-                progressPct: 100,
-              })),
-
-              ...skillGap.missing_skills.map((skill) => ({
-                skill,
-
-                studentLevel:
-                  "Beginner" as const,
-
-                requiredLevel:
-                  "Intermediate" as const,
-
-                matchStatus:
-                  "Missing" as const,
-
-                progressPct: 40,
-              })),
-            ];
-
-            if (mappedSkills.length > 0) {
-              setSkillsList(mappedSkills);
-            }
-          }
-        } catch {
-          // Keep default skill data
-        }
-      }
-
-      // ----------------------------------------------
-      // Progress Attention Intelligence
-      // ----------------------------------------------
-
+  const loadBackendData = useCallback(
+    async (studentId?: string) => {
       try {
-        const attentionResponse =
-          await intelligenceApi.evaluateAttention({
-            progress_consistency: 90,
-            task_completion: 85,
-            report_submission: 95,
-            mentor_feedback: 90,
-          });
+        const backendInternships =
+          await internshipsApi.list();
 
-        if (attentionResponse) {
-          setAttentionData({
+        if (
+          backendInternships &&
+          backendInternships.length > 0
+        ) {
+          const primary = backendInternships[0];
+
+          setActiveInternshipId(primary.id);
+
+          setInternshipDetails({
+            company:
+              primary.company_name ||
+              "CloudScale Distributed Systems",
+
+            role: primary.title,
+
+            mentor: "Dr. Marcus Vance",
+
+            mentorTitle: "Staff Systems Architect",
+
+            mentorEmail: "m.vance@cloudscale.io",
+
+            location:
+              primary.location ||
+              "Seattle, WA / Remote",
+
+            term: "Fall 2026 Cohort",
+
+            startDate: primary.start_date
+              ? primary.start_date.split("T")[0]
+              : "Aug 15, 2026",
+
+            endDate: primary.end_date
+              ? primary.end_date.split("T")[0]
+              : "Nov 07, 2026",
+
             status:
-              attentionResponse.status as
-                | "ON_TRACK"
-                | "MONITOR"
-                | "NEEDS_ATTENTION",
+              primary.status === "Open"
+                ? "Active"
+                : "Active",
 
-            attentionScore:
-              Number(attentionResponse.score),
-
-            health:
-              attentionResponse.status === "ON_TRACK"
-                ? "Healthy"
-                : "Attention Needed",
-
-            riskScore: Math.max(
-              0,
-              100 - Number(attentionResponse.score)
-            ),
-
-            lastEvaluated:
-              "Just now (Live Intelligence Engine)",
-
-            flaggedReasons:
-              attentionResponse.reasons,
-
-            reasons:
-              attentionResponse.reasons,
-
-            recommendedActions:
-              attentionResponse.recommendations,
-
-            recommendations:
-              attentionResponse.recommendations,
+            stipend:
+              primary.stipend ||
+              "$1,800 / month",
           });
+
+          // ----------------------------------------------
+          // Weekly Reports
+          // ----------------------------------------------
+
+          try {
+            const backendReports =
+              await internshipsApi.listReports(
+                primary.id
+              );
+
+            if (
+              backendReports &&
+              backendReports.length > 0
+            ) {
+              const mappedReports: ReportItem[] =
+                backendReports.map((r) => ({
+                  week: r.week_number,
+
+                  status:
+                    r.status === "Approved"
+                      ? "Approved"
+                      : "Pending Submission",
+
+                  hoursLogged: r.hours_logged,
+
+                  mentorScore: r.mentor_score,
+
+                  submissionDate:
+                    r.submission_date
+                      ? r.submission_date.split("T")[0]
+                      : undefined,
+                }));
+
+              setReportsList(mappedReports);
+            }
+          } catch {
+            // Keep mock reports if backend report loading fails
+          }
+
+          // ----------------------------------------------
+          // Skill Gap Intelligence
+          // ----------------------------------------------
+
+          try {
+            const skillGap =
+              await intelligenceApi.getInternshipSkillGap(
+                primary.id
+              );
+
+            if (skillGap) {
+              const mappedSkills: SkillMatchItem[] = [
+                ...skillGap.matched_skills.map(
+                  (skill) => ({
+                    skill,
+
+                    studentLevel:
+                      "Advanced" as const,
+
+                    requiredLevel:
+                      "Intermediate" as const,
+
+                    matchStatus:
+                      "Met" as const,
+
+                    progressPct: 100,
+                  })
+                ),
+
+                ...skillGap.missing_skills.map(
+                  (skill) => ({
+                    skill,
+
+                    studentLevel:
+                      "Beginner" as const,
+
+                    requiredLevel:
+                      "Intermediate" as const,
+
+                    matchStatus:
+                      "Missing" as const,
+
+                    progressPct: 40,
+                  })
+                ),
+              ];
+
+              if (mappedSkills.length > 0) {
+                setSkillsList(mappedSkills);
+              }
+            }
+          } catch {
+            // Keep default skill data
+          }
+        }
+
+        // ----------------------------------------------
+        // Progress Attention Intelligence
+        // ----------------------------------------------
+        //
+        // IMPORTANT:
+        // This uses the logged-in student's actual ID.
+        // The backend calculates the attention score
+        // using real internship progress data.
+        //
+
+        if (studentId) {
+          try {
+            const attentionResponse =
+              await intelligenceApi.getStudentAttention(
+                studentId
+              );
+
+            if (attentionResponse) {
+              const score =
+                Number(attentionResponse.score);
+
+              setAttentionData({
+                status:
+                  attentionResponse.status as
+                    | "ON_TRACK"
+                    | "MONITOR"
+                    | "NEEDS_ATTENTION",
+
+                attentionScore: score,
+
+                health:
+                  attentionResponse.status ===
+                  "ON_TRACK"
+                    ? "Healthy"
+                    : "Attention Needed",
+
+                riskScore: Math.max(
+                  0,
+                  100 - score
+                ),
+
+                lastEvaluated:
+                  "Just now (Live Intelligence Engine)",
+
+                flaggedReasons:
+                  attentionResponse.reasons,
+
+                reasons:
+                  attentionResponse.reasons,
+
+                recommendedActions:
+                  attentionResponse.recommendations,
+
+                recommendations:
+                  attentionResponse.recommendations,
+              });
+            }
+          } catch {
+            // Keep existing attention data if API fails
+          }
         }
       } catch {
-        // Keep default attention data
+        // Backend unavailable - continue with mock data
       }
-    } catch {
-      // Backend unavailable - continue with mock data
-    }
-  }, []);
+    },
+    []
+  );
 
   // --------------------------------------------------
   // Initial Load
@@ -325,10 +356,12 @@ export default function StudentDashboardPage() {
     async function initializeDashboard() {
       const isHealthy = await checkHealth();
 
-      await loadUserSession();
+      const user = await loadUserSession();
 
       if (isHealthy) {
-        await loadBackendData();
+        await loadBackendData(
+          user ? user.id : undefined
+        );
       }
     }
 
@@ -355,7 +388,9 @@ export default function StudentDashboardPage() {
   // Authentication
   // --------------------------------------------------
 
-  const handleAuthSuccess = (user: UserProfile) => {
+  const handleAuthSuccess = async (
+    user: UserProfile
+  ) => {
     setCurrentUser(user);
 
     setStudentProfile((prev) => ({
@@ -364,7 +399,9 @@ export default function StudentDashboardPage() {
       email: user.email,
     }));
 
-    loadBackendData();
+    // Load backend data using the newly
+    // authenticated student's real ID.
+    await loadBackendData(user.id);
   };
 
   const handleLogout = () => {
@@ -452,7 +489,9 @@ export default function StudentDashboardPage() {
                   <ProgressCard
                     progress={progress}
                     onNavigateToProgress={() =>
-                      setActiveTab("Progress & Reports")
+                      setActiveTab(
+                        "Progress & Reports"
+                      )
                     }
                   />
 
@@ -461,7 +500,9 @@ export default function StudentDashboardPage() {
                   <ReportsSubmittedCard
                     reports={reportsList}
                     onNavigateToReports={() =>
-                      setActiveTab("Progress & Reports")
+                      setActiveTab(
+                        "Progress & Reports"
+                      )
                     }
                   />
 
@@ -631,9 +672,13 @@ export default function StudentDashboardPage() {
                 progress={progress}
                 tasks={tasks}
                 attention={attentionData}
-                timeline={mockStudentData.weeklyTimeline}
+                timeline={
+                  mockStudentData.weeklyTimeline
+                }
                 onNavigateToWeeklyReport={() =>
-                  setActiveTab("Progress & Reports")
+                  setActiveTab(
+                    "Progress & Reports"
+                  )
                 }
               />
 
@@ -652,7 +697,6 @@ export default function StudentDashboardPage() {
                 </div>
 
                 <WeeklyReportView
-                  attention={attentionData}
                   initialReports={
                     mockStudentData.weeklyReports
                   }
@@ -666,7 +710,9 @@ export default function StudentDashboardPage() {
                       : undefined
                   }
                   onBackToProgress={() =>
-                    setActiveTab("Progress & Reports")
+                    setActiveTab(
+                      "Progress & Reports"
+                    )
                   }
                 />
 
