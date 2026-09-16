@@ -133,6 +133,8 @@ export interface UserProfile {
   email: string;
   full_name: string;
   role: string;
+  student_id?: string;
+  mentor_id?: string;
   is_active?: boolean;
   created_at?: string;
 }

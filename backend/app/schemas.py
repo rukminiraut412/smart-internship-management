@@ -58,6 +58,8 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    student_id: Optional[str] = None
+    mentor_id: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

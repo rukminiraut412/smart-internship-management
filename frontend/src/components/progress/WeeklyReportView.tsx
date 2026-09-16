@@ -21,6 +21,7 @@ interface WeeklyReportViewProps {
   internshipId?: string;
   studentId?: string;
   onBackToProgress?: () => void;
+  onReportSubmitted?: () => void;
 }
 
 export function WeeklyReportView({
@@ -30,6 +31,7 @@ export function WeeklyReportView({
   internshipId,
   studentId,
   onBackToProgress,
+  onReportSubmitted,
 }: WeeklyReportViewProps) {
   const [reports, setReports] = useState<WeeklyReport[]>(initialReports);
   const [prevInitialReports, setPrevInitialReports] = useState<WeeklyReport[]>(initialReports);
@@ -43,6 +45,9 @@ export function WeeklyReportView({
   const handleReportSubmitted = (newReport: WeeklyReport) => {
     // Prepend newly submitted report to history
     setReports([newReport, ...reports]);
+    if (onReportSubmitted) {
+      onReportSubmitted();
+    }
   };
 
   const pendingCount = reports.filter((r) => r.status === "Pending Review" || r.status === "Submitted").length;

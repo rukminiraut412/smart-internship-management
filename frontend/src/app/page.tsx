@@ -23,6 +23,8 @@ import {
   AttentionStatus,
   ReportItem,
   SkillMatchItem,
+  WeeklyReport,
+  ReportStatus,
 } from "@/data/mockData";
 import {
   authApi,
@@ -48,6 +50,7 @@ export default function StudentDashboardPage() {
   const [activeInternshipId, setActiveInternshipId] = useState<string | null>(null);
   const [attentionData, setAttentionData] = useState<AttentionStatus>(mockStudentData.attention);
   const [reportsList, setReportsList] = useState<ReportItem[]>(mockStudentData.reports);
+  const [detailedReports, setDetailedReports] = useState<WeeklyReport[]>(mockStudentData.weeklyReports);
   const [skillsList, setSkillsList] = useState<SkillMatchItem[]>(mockStudentData.skills);
 
   const { progress, tasks } = mockStudentData;
@@ -119,6 +122,29 @@ export default function StudentDashboardPage() {
             submissionDate: r.submission_date ? r.submission_date.split("T")[0] : undefined,
           }));
           setReportsList(mappedReports);
+
+          const mappedDetailed: WeeklyReport[] = backendReports.map((r) => {
+            const existingMock = mockStudentData.weeklyReports.find((m) => m.weekNumber === r.week_number);
+            return {
+              id: r.id,
+              weekNumber: r.week_number,
+              startDate: existingMock?.startDate || "2026-09-01",
+              endDate: existingMock?.endDate || "2026-09-07",
+              tasksCompleted: existingMock?.tasksCompleted || r.summary || "Weekly milestones completed.",
+              workDescription: r.summary || existingMock?.workDescription || r.title || "Work completed.",
+              skillsLearned: existingMock?.skillsLearned || ["Development", "Testing"],
+              challengesFaced: existingMock?.challengesFaced || "None",
+              nextWeekPlan: existingMock?.nextWeekPlan || "Continue project roadmap.",
+              submissionDate: r.submission_date ? r.submission_date.split("T")[0] : (r.created_at ? r.created_at.split("T")[0] : "Recently"),
+              status: (r.status === "Approved" ? "Reviewed" : "Pending Review") as ReportStatus,
+              shortSummary: r.title || `Week ${r.week_number} Progress Report`,
+              mentorFeedbackStatus: r.status === "Approved" ? "Reviewed" : "Pending Review",
+              mentorScore: r.mentor_score,
+              mentorFeedback: r.mentor_feedback,
+              hoursLogged: r.hours_logged,
+            };
+          });
+          setDetailedReports(mappedDetailed);
         }
 
         // Fetch Intelligence: Skill Gap
@@ -322,11 +348,12 @@ export default function StudentDashboardPage() {
           {activeTab === "Weekly Reports" && (
             <WeeklyReportView
               attention={attentionData}
-              initialReports={mockStudentData.weeklyReports}
+              initialReports={detailedReports}
               initialWeek={progress.currentWeek}
               internshipId={activeInternshipId || undefined}
-              studentId={currentUser ? currentUser.id : undefined}
+              studentId={currentUser ? (currentUser.student_id || currentUser.id) : undefined}
               onBackToProgress={() => setActiveTab("Progress")}
+              onReportSubmitted={loadBackendData}
             />
           )}
 
