@@ -4,9 +4,10 @@ import { ReportItem } from "@/data/mockData";
 
 interface Props {
   reports: ReportItem[];
+  onNavigateToReports?: () => void;
 }
 
-export function ReportsSubmittedCard({ reports }: Props) {
+export function ReportsSubmittedCard({ reports, onNavigateToReports }: Props) {
   const approvedCount = reports.filter((r) => r.status === "Approved").length;
   const pendingCount = reports.filter((r) => r.status === "Pending Submission").length;
 
@@ -62,7 +63,8 @@ export function ReportsSubmittedCard({ reports }: Props) {
         <span className="text-slate-500">{pendingCount} report requires submission</span>
         <button
           type="button"
-          className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+          onClick={onNavigateToReports}
+          className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
         >
           Submit Log →
         </button>
