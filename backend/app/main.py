@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
 from app.routers.auth import router as auth_router
+from app.routers.internships import router as internships_router
+from app.routers.students import router as students_router
+
 
 
 @asynccontextmanager
@@ -39,6 +42,9 @@ app.add_middleware(
 
 # Register API routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(internships_router, prefix=settings.API_V1_STR)
+app.include_router(students_router, prefix=settings.API_V1_STR)
+
 
 
 
