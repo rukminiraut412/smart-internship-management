@@ -31,57 +31,85 @@ interface FormErrors {
   skills?: string;
 }
 
-export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
-  const [profile, setProfile] = useState<StudentProfile>(initialProfile);
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<StudentProfile>(initialProfile);
-  const [newSkillInput, setNewSkillInput] = useState("");
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [resumeUploadedNotice, setResumeUploadedNotice] = useState<string | null>(null);
+export function StudentProfileView({
+  initialProfile,
+  onProfileUpdate,
+}: Props) {
+  const [profile, setProfile] =
+    useState<StudentProfile>(initialProfile);
 
-  // Validation function
+  const [isEditing, setIsEditing] = useState(false);
+
+  const [formData, setFormData] =
+    useState<StudentProfile>(initialProfile);
+
+  const [newSkillInput, setNewSkillInput] = useState("");
+
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const [successMessage, setSuccessMessage] =
+    useState<string | null>(null);
+
+  // --------------------------------------------------
+  // VALIDATION
+  // --------------------------------------------------
+
   const validateForm = (data: StudentProfile): boolean => {
-    const errs: FormErrors = {};
+    const validationErrors: FormErrors = {};
 
     if (!data.name.trim()) {
-      errs.name = "Full name is required";
+      validationErrors.name = "Full name is required";
     } else if (data.name.trim().length < 2) {
-      errs.name = "Name must be at least 2 characters";
+      validationErrors.name =
+        "Name must be at least 2 characters";
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!data.email.trim()) {
-      errs.email = "Email address is required";
+      validationErrors.email =
+        "Email address is required";
     } else if (!emailRegex.test(data.email.trim())) {
-      errs.email = "Please enter a valid academic/personal email";
+      validationErrors.email =
+        "Please enter a valid email address";
     }
 
     if (!data.phone.trim()) {
-      errs.phone = "Phone number is required";
+      validationErrors.phone =
+        "Phone number is required";
     } else if (data.phone.trim().length < 7) {
-      errs.phone = "Please enter a valid phone number";
+      validationErrors.phone =
+        "Please enter a valid phone number";
     }
 
     if (!data.college.trim()) {
-      errs.college = "College/School is required";
+      validationErrors.college =
+        "College / School is required";
     }
 
     if (!data.department.trim()) {
-      errs.department = "Department is required";
+      validationErrors.department =
+        "Department is required";
     }
 
     if (!data.year.trim()) {
-      errs.year = "Academic year is required";
+      validationErrors.year =
+        "Academic year is required";
     }
 
     if (!data.skills || data.skills.length === 0) {
-      errs.skills = "At least one skill must be added";
+      validationErrors.skills =
+        "At least one skill is required";
     }
 
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+    setErrors(validationErrors);
+
+    return Object.keys(validationErrors).length === 0;
   };
+
+  // --------------------------------------------------
+  // EDIT PROFILE
+  // --------------------------------------------------
 
   const handleStartEdit = () => {
     setFormData({ ...profile });
@@ -98,433 +126,684 @@ export function StudentProfileView({ initialProfile, onProfileUpdate }: Props) {
 
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm(formData)) {
-      setProfile(formData);
-      if (onProfileUpdate) {
-        onProfileUpdate(formData);
-      }
-      setIsEditing(false);
-      setSuccessMessage("Student profile updated successfully!");
-      setTimeout(() => setSuccessMessage(null), 4000);
-    }
-  };
 
-  const handleAddSkill = () => {
-    const skillTrimmed = newSkillInput.trim();
-    if (!skillTrimmed) return;
-    if (formData.skills.some((s) => s.toLowerCase() === skillTrimmed.toLowerCase())) {
-      setErrors((prev) => ({ ...prev, skills: `Skill "${skillTrimmed}" already exists` }));
+    if (!validateForm(formData)) {
       return;
     }
-    const updatedSkills = [...formData.skills, skillTrimmed];
-    setFormData((prev) => ({ ...prev, skills: updatedSkills }));
+
+    setProfile(formData);
+
+    if (onProfileUpdate) {
+      onProfileUpdate(formData);
+    }
+
+    setIsEditing(false);
+    setSuccessMessage(
+      "Student profile updated successfully."
+    );
+
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 4000);
+  };
+
+  // --------------------------------------------------
+  // SKILLS
+  // --------------------------------------------------
+
+  const handleAddSkill = () => {
+    const skill = newSkillInput.trim();
+
+    if (!skill) {
+      return;
+    }
+
+    const alreadyExists = formData.skills.some(
+      (existingSkill) =>
+        existingSkill.toLowerCase() === skill.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      setErrors((previous) => ({
+        ...previous,
+        skills: `Skill "${skill}" already exists`,
+      }));
+
+      return;
+    }
+
+    const updatedSkills = [
+      ...formData.skills,
+      skill,
+    ];
+
+    setFormData((previous) => ({
+      ...previous,
+      skills: updatedSkills,
+    }));
+
     setNewSkillInput("");
-    setErrors((prev) => ({ ...prev, skills: undefined }));
+
+    setErrors((previous) => ({
+      ...previous,
+      skills: undefined,
+    }));
   };
 
   const handleRemoveSkill = (skillToRemove: string) => {
-    const updatedSkills = formData.skills.filter((s) => s !== skillToRemove);
-    setFormData((prev) => ({ ...prev, skills: updatedSkills }));
+    const updatedSkills = formData.skills.filter(
+      (skill) => skill !== skillToRemove
+    );
+
+    setFormData((previous) => ({
+      ...previous,
+      skills: updatedSkills,
+    }));
+
     if (updatedSkills.length === 0) {
-      setErrors((prev) => ({ ...prev, skills: "At least one skill is required" }));
+      setErrors((previous) => ({
+        ...previous,
+        skills: "At least one skill is required",
+      }));
     }
   };
 
-  const handleSimulateResumeUpload = () => {
-    const simulatedFileName = `${profile.name.toLowerCase().replace(/\s+/g, "_")}_updated_resume.pdf`;
-    const updatedProfile: StudentProfile = {
-      ...profile,
-      resume: {
-        fileName: simulatedFileName,
-        status: "Verified & Active",
-        uploadDate: "Just now",
-        fileSize: "1.5 MB",
-      },
-    };
-    setProfile(updatedProfile);
-    setFormData(updatedProfile);
-    if (onProfileUpdate) {
-      onProfileUpdate(updatedProfile);
-    }
-    setResumeUploadedNotice(`New resume uploaded: "${simulatedFileName}"`);
-    setTimeout(() => setResumeUploadedNotice(null), 4000);
-  };
+  // --------------------------------------------------
+  // INPUT CLASS
+  // --------------------------------------------------
+
+  const inputClass = (error?: string) =>
+    `w-full rounded-lg border px-3 py-2 text-xs text-slate-800 bg-white focus:outline-none focus:ring-1 ${
+      error
+        ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20"
+        : "border-slate-200 focus:ring-emerald-500"
+    }`;
+
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Alert Banners */}
+    <div className="space-y-5 max-w-5xl mx-auto">
+
+      {/* Success Message */}
       {successMessage && (
-        <div className="flex items-center space-x-2 rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs font-semibold text-emerald-800 shadow-2xs">
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs font-semibold text-emerald-800">
           <CheckCircleIcon className="w-5 h-5 text-emerald-600 shrink-0" />
+
           <span>{successMessage}</span>
         </div>
       )}
 
-      {resumeUploadedNotice && (
-        <div className="flex items-center space-x-2 rounded-xl bg-indigo-50 border border-indigo-200 p-4 text-xs font-semibold text-indigo-800 shadow-2xs">
-          <CheckCircleIcon className="w-5 h-5 text-indigo-600 shrink-0" />
-          <span>{resumeUploadedNotice}</span>
-        </div>
-      )}
+      {/* ------------------------------------------------
+          PROFILE HEADER
+      ------------------------------------------------ */}
 
-      {/* Main Profile Header Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
-          <div className="flex items-center space-x-4">
-            <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white font-bold text-2xl shadow-sm ring-4 ring-indigo-50">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+
+          <div className="flex items-center gap-4">
+
+            {/* Avatar */}
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold text-xl">
               {profile.avatarInitials}
             </div>
+
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{profile.name}</h1>
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                  <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  Active Enrolled
+
+                <h1 className="text-xl font-bold text-slate-900">
+                  {profile.name}
+                </h1>
+
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Active Student
                 </span>
+
               </div>
-              <p className="text-xs text-slate-500 mt-1">Student ID: <span className="font-semibold text-slate-700">{profile.studentId}</span></p>
-              <p className="text-xs text-indigo-600 font-medium">{profile.department}</p>
+
+              <p className="text-xs text-slate-500 mt-1">
+                Student ID:{" "}
+                <span className="font-semibold text-slate-700">
+                  {profile.studentId}
+                </span>
+              </p>
+
+              <p className="text-xs text-emerald-700 font-medium mt-0.5">
+                {profile.department}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {!isEditing ? (
-              <button
-                type="button"
-                onClick={handleStartEdit}
-                className="inline-flex items-center space-x-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors"
-              >
-                <PencilSquareIcon className="w-4 h-4" />
-                <span>Edit Profile</span>
-              </button>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+          {/* Edit Button */}
+          {!isEditing ? (
+            <button
+              type="button"
+              onClick={handleStartEdit}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
+            >
+              <PencilSquareIcon className="w-4 h-4" />
+              <span>Edit Profile</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
 
-        {/* Profile Content: View Mode vs Edit Mode */}
-        {!isEditing ? (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Academic & Personal Details */}
-            <div className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Academic & Contact Information
-              </h2>
-
-              <div className="rounded-xl bg-slate-50/70 border border-slate-100 p-4 space-y-3 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <UserIcon className="w-4 h-4 text-slate-400" />
-                    Full Name
-                  </span>
-                  <span className="font-semibold text-slate-800">{profile.name}</span>
-                </div>
-
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <MailIcon className="w-4 h-4 text-slate-400" />
-                    Institutional Email
-                  </span>
-                  <span className="font-semibold text-slate-800">{profile.email}</span>
-                </div>
-
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <PhoneIcon className="w-4 h-4 text-slate-400" />
-                    Phone Number
-                  </span>
-                  <span className="font-semibold text-slate-800">{profile.phone}</span>
-                </div>
-
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <BuildingOfficeIcon className="w-4 h-4 text-slate-400" />
-                    College / School
-                  </span>
-                  <span className="font-semibold text-slate-800 text-right">{profile.college}</span>
-                </div>
-
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <AcademicCapIcon className="w-4 h-4 text-slate-400" />
-                    Department
-                  </span>
-                  <span className="font-semibold text-slate-800 text-right">{profile.department}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 flex items-center gap-2">
-                    <AcademicCapIcon className="w-4 h-4 text-slate-400" />
-                    Academic Year
-                  </span>
-                  <span className="font-semibold text-slate-800">{profile.year}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Skills & Resume Status */}
-            <div className="space-y-4">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Skills & Verification
-              </h2>
-
-              {/* Skills Tags */}
-              <div className="rounded-xl bg-slate-50/70 border border-slate-100 p-4">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-xs font-semibold text-slate-700">Declared Skills</span>
-                  <span className="text-[11px] text-slate-400 font-medium">{profile.skills.length} skills listed</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {profile.skills.map((skill, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center rounded-lg bg-white border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Resume Status Card */}
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
-                <div className="flex items-center justify-between pb-2 border-b border-indigo-100/60">
-                  <div className="flex items-center space-x-2">
-                    <DocumentTextIcon className="w-5 h-5 text-indigo-600" />
-                    <span className="text-xs font-bold text-slate-900">Resume Status</span>
-                  </div>
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                    <CheckCircleIcon className="w-3 h-3 mr-1 text-emerald-600" />
-                    {profile.resume.status}
-                  </span>
-                </div>
-
-                <div className="mt-3 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-700">
-                    <span className="font-medium truncate max-w-[200px]">{profile.resume.fileName}</span>
-                    <span className="text-slate-400 text-[11px]">{profile.resume.fileSize}</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400">Uploaded on {profile.resume.uploadDate}</p>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-indigo-100/60 flex items-center justify-between">
-                  <span className="text-[11px] text-indigo-700 font-medium">Verified by Academic Portal</span>
-                  <button
-                    type="button"
-                    onClick={handleSimulateResumeUpload}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                  >
-                    Upload New Resume →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Edit Form */
-          <form onSubmit={handleSaveEdit} className="mt-6 space-y-6">
-            {Object.keys(errors).length > 0 && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 flex items-center gap-2">
-                <AlertCircleIcon className="w-4 h-4 text-rose-500 shrink-0" />
-                <span>Please correct the errors highlighted below before saving.</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Full Name */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Name <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full rounded-lg border px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 ${
-                    errors.name ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20" : "border-slate-200 focus:ring-indigo-500"
-                  }`}
-                  placeholder="e.g. Alex Rivera"
-                />
-                {errors.name && <p className="mt-1 text-[11px] text-rose-600">{errors.name}</p>}
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Institutional Email <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full rounded-lg border px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 ${
-                    errors.email ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20" : "border-slate-200 focus:ring-indigo-500"
-                  }`}
-                  placeholder="e.g. alex.rivera@university.edu"
-                />
-                {errors.email && <p className="mt-1 text-[11px] text-rose-600">{errors.email}</p>}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Phone Number <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className={`w-full rounded-lg border px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 ${
-                    errors.phone ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20" : "border-slate-200 focus:ring-indigo-500"
-                  }`}
-                  placeholder="e.g. +1 (555) 382-9014"
-                />
-                {errors.phone && <p className="mt-1 text-[11px] text-rose-600">{errors.phone}</p>}
-              </div>
-
-              {/* Year */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Academic Year <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 bg-white"
-                >
-                  <option value="1st Year (Semester 1 & 2)">1st Year (Semester 1 & 2)</option>
-                  <option value="2nd Year (Semester 3 & 4)">2nd Year (Semester 3 & 4)</option>
-                  <option value="3rd Year (Semester 5 & 6)">3rd Year (Semester 5 & 6)</option>
-                  <option value="Final Year (Semester 7 - 2026)">Final Year (Semester 7 - 2026)</option>
-                  <option value="Final Year (Semester 8 - 2026)">Final Year (Semester 8 - 2026)</option>
-                </select>
-                {errors.year && <p className="mt-1 text-[11px] text-rose-600">{errors.year}</p>}
-              </div>
-
-              {/* College */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  College / School <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.college}
-                  onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                  className={`w-full rounded-lg border px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 ${
-                    errors.college ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20" : "border-slate-200 focus:ring-indigo-500"
-                  }`}
-                  placeholder="e.g. School of Engineering & Applied Sciences"
-                />
-                {errors.college && <p className="mt-1 text-[11px] text-rose-600">{errors.college}</p>}
-              </div>
-
-              {/* Department */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Department <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className={`w-full rounded-lg border px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 ${
-                    errors.department ? "border-rose-400 focus:ring-rose-400 bg-rose-50/20" : "border-slate-200 focus:ring-indigo-500"
-                  }`}
-                  placeholder="e.g. Department of Computer Science & Engineering"
-                />
-                {errors.department && <p className="mt-1 text-[11px] text-rose-600">{errors.department}</p>}
-              </div>
-            </div>
-
-            {/* Skills Edit Section */}
-            <div className="pt-3 border-t border-slate-100">
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Technical Skills <span className="text-rose-500">*</span>
-              </label>
-
-              {/* Skill Adder Input */}
-              <div className="flex gap-2 max-w-md">
-                <input
-                  type="text"
-                  value={newSkillInput}
-                  onChange={(e) => setNewSkillInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddSkill();
-                    }
-                  }}
-                  placeholder="Add a new skill (e.g. Kubernetes, React)..."
-                  className="flex-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddSkill}
-                  className="inline-flex items-center space-x-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
-                >
-                  <PlusIcon className="w-3.5 h-3.5" />
-                  <span>Add</span>
-                </button>
-              </div>
-
-              {errors.skills && <p className="mt-1 text-[11px] text-rose-600">{errors.skills}</p>}
-
-              {/* Skill Tags to Remove */}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {formData.skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="inline-flex items-center space-x-1.5 rounded-lg bg-indigo-50 border border-indigo-200 px-2.5 py-1 text-xs font-medium text-indigo-800"
-                  >
-                    <span>{skill}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      className="text-indigo-400 hover:text-rose-600 p-0.5 rounded transition-colors"
-                      title={`Remove ${skill}`}
-                    >
-                      <TrashIcon className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Form Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </button>
+
               <button
                 type="submit"
-                className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors"
+                form="student-profile-form"
+                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
               >
-                Save Profile
+                Save Changes
               </button>
+
             </div>
-          </form>
-        )}
+          )}
+
+        </div>
       </div>
+
+      {/* ------------------------------------------------
+          VIEW MODE
+      ------------------------------------------------ */}
+
+      {!isEditing ? (
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+          {/* Academic Information */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
+            <div className="mb-4">
+              <h2 className="text-sm font-bold text-slate-900">
+                Academic & Contact Information
+              </h2>
+
+              <p className="text-xs text-slate-500 mt-1">
+                Your registered student information.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+
+              <InfoRow
+                icon={<UserIcon className="w-4 h-4" />}
+                label="Full Name"
+                value={profile.name}
+              />
+
+              <InfoRow
+                icon={<MailIcon className="w-4 h-4" />}
+                label="Email"
+                value={profile.email}
+              />
+
+              <InfoRow
+                icon={<PhoneIcon className="w-4 h-4" />}
+                label="Phone"
+                value={profile.phone}
+              />
+
+              <InfoRow
+                icon={
+                  <BuildingOfficeIcon className="w-4 h-4" />
+                }
+                label="College / School"
+                value={profile.college}
+              />
+
+              <InfoRow
+                icon={
+                  <AcademicCapIcon className="w-4 h-4" />
+                }
+                label="Department"
+                value={profile.department}
+              />
+
+              <InfoRow
+                icon={
+                  <AcademicCapIcon className="w-4 h-4" />
+                }
+                label="Academic Year"
+                value={profile.year}
+                last
+              />
+
+            </div>
+          </div>
+
+          {/* Skills & Resume */}
+          <div className="space-y-5">
+
+            {/* Skills */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
+              <div className="flex items-center justify-between mb-4">
+
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Skills
+                  </h2>
+
+                  <p className="text-xs text-slate-500 mt-1">
+                    Skills used for internship matching.
+                  </p>
+                </div>
+
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {profile.skills.length} skills
+                </span>
+
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+
+                {profile.skills.map((skill, index) => (
+                  <span
+                    key={`${skill}-${index}`}
+                    className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700"
+                  >
+                    {skill}
+                  </span>
+                ))}
+
+              </div>
+
+            </div>
+
+            {/* Resume */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+
+              <div className="flex items-center gap-3">
+
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600">
+                  <DocumentTextIcon className="w-5 h-5" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+
+                  <h2 className="text-sm font-bold text-slate-900">
+                    Resume
+                  </h2>
+
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    {profile.resume.fileName}
+                  </p>
+
+                </div>
+
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                  <CheckCircleIcon className="w-3 h-3" />
+                  {profile.resume.status}
+                </span>
+
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+
+                <span className="text-slate-400">
+                  {profile.resume.fileSize}
+                </span>
+
+                <span className="text-slate-400">
+                  Uploaded {profile.resume.uploadDate}
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      ) : (
+
+        /* ------------------------------------------------
+           EDIT MODE
+        ------------------------------------------------ */
+
+        <form
+          id="student-profile-form"
+          onSubmit={handleSaveEdit}
+          className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 space-y-6"
+        >
+
+          {/* Error Banner */}
+          {Object.keys(errors).length > 0 && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
+              <AlertCircleIcon className="w-4 h-4 shrink-0" />
+
+              <span>
+                Please correct the highlighted fields before saving.
+              </span>
+            </div>
+          )}
+
+          {/* Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            {/* Name */}
+            <FormField
+              label="Full Name"
+              required
+              error={errors.name}
+            >
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    name: e.target.value,
+                  })
+                }
+                className={inputClass(errors.name)}
+                placeholder="Enter full name"
+              />
+            </FormField>
+
+            {/* Email */}
+            <FormField
+              label="Email"
+              required
+              error={errors.email}
+            >
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    email: e.target.value,
+                  })
+                }
+                className={inputClass(errors.email)}
+                placeholder="Enter email address"
+              />
+            </FormField>
+
+            {/* Phone */}
+            <FormField
+              label="Phone Number"
+              required
+              error={errors.phone}
+            >
+              <input
+                type="text"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    phone: e.target.value,
+                  })
+                }
+                className={inputClass(errors.phone)}
+                placeholder="Enter phone number"
+              />
+            </FormField>
+
+            {/* Academic Year */}
+            <FormField
+              label="Academic Year"
+              required
+              error={errors.year}
+            >
+              <select
+                value={formData.year}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    year: e.target.value,
+                  })
+                }
+                className={inputClass(errors.year)}
+              >
+                <option value="">
+                  Select academic year
+                </option>
+
+                <option value="1st Year">
+                  1st Year
+                </option>
+
+                <option value="2nd Year">
+                  2nd Year
+                </option>
+
+                <option value="3rd Year">
+                  3rd Year
+                </option>
+
+                <option value="Final Year">
+                  Final Year
+                </option>
+              </select>
+            </FormField>
+
+            {/* College */}
+            <FormField
+              label="College / School"
+              required
+              error={errors.college}
+            >
+              <input
+                type="text"
+                value={formData.college}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    college: e.target.value,
+                  })
+                }
+                className={inputClass(errors.college)}
+                placeholder="Enter college / school"
+              />
+            </FormField>
+
+            {/* Department */}
+            <FormField
+              label="Department"
+              required
+              error={errors.department}
+            >
+              <input
+                type="text"
+                value={formData.department}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    department: e.target.value,
+                  })
+                }
+                className={inputClass(errors.department)}
+                placeholder="Enter department"
+              />
+            </FormField>
+
+          </div>
+
+          {/* Skills */}
+          <div className="pt-5 border-t border-slate-100">
+
+            <div className="mb-3">
+
+              <label className="block text-xs font-bold text-slate-700">
+                Technical Skills{" "}
+                <span className="text-rose-500">*</span>
+              </label>
+
+              <p className="text-[11px] text-slate-400 mt-1">
+                Add skills that can be used for internship skill-gap analysis.
+              </p>
+
+            </div>
+
+            {/* Add Skill */}
+            <div className="flex gap-2 max-w-lg">
+
+              <input
+                type="text"
+                value={newSkillInput}
+                onChange={(e) =>
+                  setNewSkillInput(e.target.value)
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSkill();
+                  }
+                }}
+                placeholder="e.g. Python, React, SQL"
+                className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+
+              <button
+                type="button"
+                onClick={handleAddSkill}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                <PlusIcon className="w-3.5 h-3.5" />
+                Add
+              </button>
+
+            </div>
+
+            {errors.skills && (
+              <p className="mt-1.5 text-[11px] text-rose-600">
+                {errors.skills}
+              </p>
+            )}
+
+            {/* Skill Tags */}
+            <div className="mt-4 flex flex-wrap gap-2">
+
+              {formData.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-xs font-medium text-emerald-800"
+                >
+                  <span>{skill}</span>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleRemoveSkill(skill)
+                    }
+                    className="text-emerald-500 hover:text-rose-600"
+                    title={`Remove ${skill}`}
+                  >
+                    <TrashIcon className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+
+            </div>
+
+          </div>
+
+          {/* Bottom Actions */}
+          <div className="pt-5 border-t border-slate-100 flex justify-end gap-2">
+
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
+            >
+              Save Profile
+            </button>
+
+          </div>
+
+        </form>
+      )}
+
+    </div>
+  );
+}
+
+/* ======================================================
+   SMALL REUSABLE COMPONENTS
+====================================================== */
+
+function InfoRow({
+  icon,
+  label,
+  value,
+  last = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 py-2.5 ${
+        !last ? "border-b border-slate-100" : ""
+      }`}
+    >
+      <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
+        <span className="text-slate-400">
+          {icon}
+        </span>
+
+        <span>{label}</span>
+      </div>
+
+      <span className="text-xs font-semibold text-slate-800 text-right break-words">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  required,
+  error,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-slate-700 mb-1">
+        {label}
+
+        {required && (
+          <span className="text-rose-500 ml-1">
+            *
+          </span>
+        )}
+      </label>
+
+      {children}
+
+      {error && (
+        <p className="mt-1 text-[11px] text-rose-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
