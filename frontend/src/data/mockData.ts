@@ -2,11 +2,20 @@ export interface StudentProfile {
   name: string;
   studentId: string;
   email: string;
+  phone: string;
+  college: string;
   university: string;
   department: string;
   year: string;
   gpa: number;
   avatarInitials: string;
+  skills: string[];
+  resume: {
+    fileName: string;
+    status: "Verified & Active" | "Pending Verification" | "Action Required";
+    uploadDate: string;
+    fileSize: string;
+  };
 }
 
 export interface InternshipDetails {
@@ -64,6 +73,24 @@ export interface AttentionStatus {
   recommendedActions: string[];
 }
 
+export interface RegisteredInternship {
+  id: string;
+  companyName: string;
+  internshipTitle: string;
+  domain: string;
+  startDate: string;
+  endDate: string;
+  mode: "Online" | "Offline" | "Hybrid";
+  location: string;
+  requiredSkills: string[];
+  description: string;
+  mentorName: string;
+  mentorEmail: string;
+  mentorPhone: string;
+  registrationStatus: "Approved" | "Pending Review" | "Under Evaluation";
+  submittedAt: string;
+}
+
 export const mockStudentData: {
   student: StudentProfile;
   internship: InternshipDetails;
@@ -72,16 +99,37 @@ export const mockStudentData: {
   reports: ReportItem[];
   skills: SkillMatchItem[];
   attention: AttentionStatus;
+  registeredInternships: RegisteredInternship[];
 } = {
   student: {
     name: "Alex Rivera",
     studentId: "STU-2026-8842",
     email: "alex.rivera@university.edu",
+    phone: "+1 (555) 382-9014",
+    college: "School of Engineering & Applied Sciences",
     university: "State Institute of Technology",
     department: "Department of Computer Science & Engineering",
-    year: "Final Year (Semester 7)",
+    year: "Final Year (Semester 7 - 2026)",
     gpa: 3.84,
     avatarInitials: "AR",
+    skills: [
+      "Python",
+      "FastAPI",
+      "PostgreSQL",
+      "Docker",
+      "Git & GitHub",
+      "TypeScript",
+      "REST APIs",
+      "Redis",
+      "Linux Sysadmin",
+      "CI/CD Pipelines",
+    ],
+    resume: {
+      fileName: "alex_rivera_cs_resume_2026.pdf",
+      status: "Verified & Active",
+      uploadDate: "Aug 10, 2026",
+      fileSize: "1.4 MB",
+    },
   },
   internship: {
     company: "CloudScale Distributed Systems",
@@ -234,4 +282,23 @@ export const mockStudentData: {
       "Schedule Thursday 15-minute sync with Dr. Marcus Vance to review Redis caching requirements",
     ],
   },
+  registeredInternships: [
+    {
+      id: "REG-2026-0814",
+      companyName: "CloudScale Distributed Systems",
+      internshipTitle: "Backend Engineering Intern",
+      domain: "Cloud & Distributed Systems",
+      startDate: "2026-08-15",
+      endDate: "2026-11-07",
+      mode: "Hybrid",
+      location: "Seattle, WA / Remote",
+      requiredSkills: ["Python", "FastAPI", "PostgreSQL", "Docker"],
+      description: "Developing scalable telemetry ingestion pipelines and microservices in Python with automated integration testing.",
+      mentorName: "Dr. Marcus Vance",
+      mentorEmail: "m.vance@cloudscale.io",
+      mentorPhone: "+1 (555) 441-2099",
+      registrationStatus: "Approved",
+      submittedAt: "2026-08-01 10:15 AM",
+    },
+  ],
 };

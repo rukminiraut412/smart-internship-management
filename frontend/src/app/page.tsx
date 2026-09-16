@@ -11,14 +11,17 @@ import { ReportsSubmittedCard } from "@/components/dashboard/ReportsSubmittedCar
 import { SkillMatchCard } from "@/components/dashboard/SkillMatchCard";
 import { AttentionStatusCard } from "@/components/dashboard/AttentionStatusCard";
 import { PlaceholderView } from "@/components/dashboard/PlaceholderView";
-import { mockStudentData } from "@/data/mockData";
+import { StudentProfileView } from "@/components/profile/StudentProfileView";
+import { InternshipRegistrationView } from "@/components/internship/InternshipRegistrationView";
+import { mockStudentData, StudentProfile } from "@/data/mockData";
 
 export default function StudentDashboardPage() {
   const [activeTab, setActiveTab] = useState<string>("Dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [showSubmissionNotice, setShowSubmissionNotice] = useState<boolean>(false);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>(mockStudentData.student);
 
-  const { student, internship, progress, tasks, reports, skills, attention } = mockStudentData;
+  const { internship, progress, tasks, reports, skills, attention } = mockStudentData;
 
   const handleActionClick = () => {
     setShowSubmissionNotice(true);
@@ -54,13 +57,14 @@ export default function StudentDashboardPage() {
 
         {/* Scrollable Content Area */}
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
-          {activeTab === "Dashboard" ? (
+          {activeTab === "Dashboard" && (
             <div className="space-y-6">
               {/* Header Hero */}
               <DashboardHeader
-                student={student}
+                student={studentProfile}
                 internship={internship}
                 onActionClick={handleActionClick}
+                onNavigateTab={setActiveTab}
               />
 
               {/* Core 6 Cards Grid */}
@@ -90,21 +94,45 @@ export default function StudentDashboardPage() {
               <section className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500 shadow-2xs">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <span>
-                    Logged in as <strong>{student.name}</strong> ({student.studentId}) • {student.department}
+                    Logged in as <strong>{studentProfile.name}</strong> ({studentProfile.studentId}) • {studentProfile.department}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-slate-400">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    Student Portal • Offline Static Mode
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("My Profile")}
+                      className="font-semibold text-indigo-600 hover:text-indigo-800"
+                    >
+                      View Full Profile →
+                    </button>
+                    <span className="inline-flex items-center gap-1 text-slate-400">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                      Student Portal • Active
+                    </span>
+                  </div>
                 </div>
               </section>
             </div>
-          ) : (
-            <PlaceholderView
-              tabName={activeTab}
-              onBackToDashboard={() => setActiveTab("Dashboard")}
+          )}
+
+          {activeTab === "My Profile" && (
+            <StudentProfileView
+              initialProfile={studentProfile}
+              onProfileUpdate={setStudentProfile}
             />
           )}
+
+          {activeTab === "Internship Registration" && (
+            <InternshipRegistrationView />
+          )}
+
+          {activeTab !== "Dashboard" &&
+            activeTab !== "My Profile" &&
+            activeTab !== "Internship Registration" && (
+              <PlaceholderView
+                tabName={activeTab}
+                onBackToDashboard={() => setActiveTab("Dashboard")}
+              />
+            )}
         </main>
       </div>
     </div>

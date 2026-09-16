@@ -24,6 +24,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "My Profile", label: "My Profile", icon: UserIcon },
+  { id: "Internship Registration", label: "Internship Registration", badge: "Form", badgeColor: "bg-indigo-100 text-indigo-700", icon: BriefcaseIcon },
   { id: "Internships", label: "Internships", icon: BriefcaseIcon },
   { id: "Applications", label: "Applications", icon: ClipboardCheckIcon },
   { id: "Progress", label: "Progress", icon: TrendingUpIcon },
