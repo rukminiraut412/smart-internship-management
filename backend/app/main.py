@@ -5,8 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
 from app.routers.auth import router as auth_router
+from app.routers.intelligence import router as intelligence_router
 from app.routers.internships import router as internships_router
 from app.routers.students import router as students_router
+from app.seed import seed_demo_data
 
 
 
@@ -15,6 +17,8 @@ async def lifespan(app: FastAPI):
     """Application lifespan context manager for startup and shutdown events."""
     # Ensure all tables are created on startup
     init_db()
+    # Populate initial prototype demo data if tables are empty
+    seed_demo_data()
     yield
 
 
@@ -44,6 +48,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(internships_router, prefix=settings.API_V1_STR)
 app.include_router(students_router, prefix=settings.API_V1_STR)
+app.include_router(intelligence_router, prefix=settings.API_V1_STR)
 
 
 

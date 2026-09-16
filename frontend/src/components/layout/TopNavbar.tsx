@@ -1,16 +1,37 @@
 "use client";
 
 import React from "react";
-import { MenuIcon, BellIcon, SearchIcon } from "@/components/common/Icons";
+import { MenuIcon, BellIcon, SearchIcon, UserIcon } from "@/components/common/Icons";
 import { mockStudentData } from "@/data/mockData";
+import { UserProfile } from "@/lib/api";
 
 interface TopNavbarProps {
   onOpenSidebar: () => void;
   activeTabTitle: string;
+  currentUser?: UserProfile | null;
+  backendConnected?: boolean;
+  onOpenAuthModal?: () => void;
+  onLogout?: () => void;
 }
 
-export function TopNavbar({ onOpenSidebar, activeTabTitle }: TopNavbarProps) {
+export function TopNavbar({
+  onOpenSidebar,
+  activeTabTitle,
+  currentUser,
+  backendConnected = false,
+  onOpenAuthModal,
+  onLogout,
+}: TopNavbarProps) {
   const { student, internship } = mockStudentData;
+
+  const displayName = currentUser ? currentUser.full_name : student.name;
+  const displayRole = currentUser ? currentUser.role : "Student";
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 backdrop-blur-xs px-4 sm:px-6 lg:px-8">
@@ -47,10 +68,29 @@ export function TopNavbar({ onOpenSidebar, activeTabTitle }: TopNavbarProps) {
         </div>
       </div>
 
-      {/* Right: Academic Status & User Profile */}
-      <div className="flex items-center space-x-3 sm:space-x-4">
+      {/* Right: Backend Health Status, Academic Status & User Profile */}
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        {/* Backend Connectivity Badge */}
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
+            backendConnected
+              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : "bg-amber-50 text-amber-700 border-amber-200"
+          }`}
+          title={backendConnected ? "Backend API service connected" : "Backend unreachable (mock mode)"}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              backendConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+            }`}
+          />
+          <span className="hidden md:inline">
+            {backendConnected ? "Backend Connected" : "Local Mode"}
+          </span>
+        </span>
+
         {/* Cohort Tag */}
-        <div className="hidden sm:inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-100">
+        <div className="hidden lg:inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 border border-indigo-100">
           <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
           {internship.term}
         </div>
@@ -68,15 +108,42 @@ export function TopNavbar({ onOpenSidebar, activeTabTitle }: TopNavbarProps) {
           </span>
         </button>
 
-        {/* Student Quick Tag */}
+        {/* User Profile / Auth Toggle */}
         <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
-          <div className="h-8 w-8 rounded-full bg-slate-900 text-white font-semibold text-xs flex items-center justify-center">
-            {student.avatarInitials}
-          </div>
-          <div className="hidden xl:block text-left">
-            <div className="text-xs font-semibold text-slate-800 leading-none">{student.name}</div>
-            <div className="text-[10px] text-slate-400 font-medium mt-0.5">Student</div>
-          </div>
+          {currentUser ? (
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 rounded-full bg-indigo-600 text-white font-semibold text-xs flex items-center justify-center ring-2 ring-indigo-100">
+                {initials}
+              </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-semibold text-slate-800 leading-none max-w-[120px] truncate">
+                  {displayName}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium capitalize mt-0.5">
+                  {displayRole}
+                </div>
+              </div>
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors ml-1"
+                  title="Sign out"
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-semibold shadow-2xs transition-colors"
+            >
+              <UserIcon className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

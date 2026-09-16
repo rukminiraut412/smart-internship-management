@@ -1,21 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   DocumentTextIcon,
-  CalendarIcon,
   CheckCircleIcon,
   AlertCircleIcon,
   SendIcon,
   BookmarkIcon,
-  PlusIcon,
-  TrashIcon,
-  ClockIcon,
 } from "@/components/common/Icons";
 import { WeeklyReport } from "@/data/mockData";
+import { internshipsApi, ApiError } from "@/lib/api";
 
 interface WeeklyReportFormProps {
   initialWeek?: number;
+  internshipId?: string;
+  studentId?: string;
   onSubmitSuccess: (report: WeeklyReport) => void;
 }
 
@@ -45,9 +44,19 @@ const COMMON_SKILLS = [
 
 export function WeeklyReportForm({
   initialWeek = 5,
+  internshipId,
+  studentId,
   onSubmitSuccess,
 }: WeeklyReportFormProps) {
   const [weekNumber, setWeekNumber] = useState<number>(initialWeek);
+  const [prevInitialWeek, setPrevInitialWeek] = useState<number>(initialWeek);
+
+  // Sync state if initialWeek changes from outside (standard React pattern without useEffect cascading renders)
+  if (initialWeek !== prevInitialWeek) {
+    setPrevInitialWeek(initialWeek);
+    setWeekNumber(initialWeek);
+  }
+
   const [startDate, setStartDate] = useState<string>("2026-09-13");
   const [endDate, setEndDate] = useState<string>("2026-09-19");
   const [hoursLogged, setHoursLogged] = useState<number>(20);
@@ -75,13 +84,6 @@ export function WeeklyReportForm({
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
-  // Sync when initialWeek prop changes
-  useEffect(() => {
-    if (initialWeek) {
-      setWeekNumber(initialWeek);
-    }
-  }, [initialWeek]);
-
   // Skill tag addition
   const handleAddSkill = (skillToAdd: string) => {
     const trimmed = skillToAdd.trim();
@@ -90,7 +92,7 @@ export function WeeklyReportForm({
     setSkillsLearned([...skillsLearned, trimmed]);
     setSkillInput("");
     if (errors.skillsLearned) {
-      setErrors((prev) => ({ ...prev, skillsLearned: undefined }));
+      setErrors((prev: FormErrors) => ({ ...prev, skillsLearned: undefined }));
     }
   };
 
@@ -176,41 +178,53 @@ export function WeeklyReportForm({
   };
 
   // Submit Report
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
-      // Scroll to error area or display alert
       return;
     }
 
     setIsSubmitting(true);
+    setSuccessBanner(null);
 
-    // Simulate submission delay
-    setTimeout(() => {
-      const newReport: WeeklyReport = {
-        id: `REP-WK-00${weekNumber}`,
-        weekNumber,
-        startDate,
-        endDate,
-        tasksCompleted,
-        workDescription,
-        skillsLearned,
-        challengesFaced,
-        nextWeekPlan,
-        submissionDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        status: "Submitted",
-        shortSummary:
-          workDescription.length > 90
-            ? `${workDescription.substring(0, 90)}...`
-            : workDescription,
-        mentorFeedbackStatus: "Pending Review",
-        hoursLogged,
-      };
+    const generatedId = `REP-WK-00${weekNumber}`;
+    const reportData: WeeklyReport = {
+      id: generatedId,
+      weekNumber,
+      startDate,
+      endDate,
+      tasksCompleted,
+      workDescription,
+      skillsLearned,
+      challengesFaced,
+      nextWeekPlan,
+      submissionDate: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+      status: "Submitted",
+      shortSummary:
+        workDescription.length > 90
+          ? `${workDescription.substring(0, 90)}...`
+          : workDescription,
+      mentorFeedbackStatus: "Pending Review",
+      hoursLogged,
+    };
+
+    try {
+      if (internshipId && studentId) {
+        // Send to real backend API: POST /api/internships/{internship_id}/reports
+        await internshipsApi.createReport(internshipId, {
+          student_id: studentId,
+          week_number: weekNumber,
+          title: `Week ${weekNumber} Progress Report`,
+          summary: `${workDescription}\n\nTasks:\n${tasksCompleted}\n\nChallenges:\n${challengesFaced}\n\nNext Plan:\n${nextWeekPlan}`,
+          hours_logged: hoursLogged,
+          status: "Pending Submission",
+        });
+      }
 
       // Clear draft storage
       try {
@@ -221,12 +235,26 @@ export function WeeklyReportForm({
         // Ignore
       }
 
-      setIsSubmitting(false);
       setSuccessBanner(
-        `Weekly Report for Week ${weekNumber} submitted successfully! Your submission is now marked as "Submitted" and is awaiting mentor review.`
+        `Weekly Report for Week ${weekNumber} submitted successfully! Your submission is now recorded and awaiting mentor review.`
       );
-      onSubmitSuccess(newReport);
-    }, 600);
+      onSubmitSuccess(reportData);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setErrors((prev: FormErrors) => ({
+          ...prev,
+          weekNumber: err.message,
+        }));
+      } else {
+        // Graceful fallback for offline mode
+        setSuccessBanner(
+          `Weekly Report recorded locally for Week ${weekNumber} (Backend offline).`
+        );
+        onSubmitSuccess(reportData);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -15,17 +15,199 @@ import { StudentProfileView } from "@/components/profile/StudentProfileView";
 import { InternshipRegistrationView } from "@/components/internship/InternshipRegistrationView";
 import { InternshipProgressView } from "@/components/progress/InternshipProgressView";
 import { WeeklyReportView } from "@/components/progress/WeeklyReportView";
-import { mockStudentData, StudentProfile } from "@/data/mockData";
+import { AuthModal } from "@/components/auth/AuthModal";
+import {
+  mockStudentData,
+  StudentProfile,
+  InternshipDetails,
+  AttentionStatus,
+  ReportItem,
+  SkillMatchItem,
+} from "@/data/mockData";
+import {
+  authApi,
+  authStorage,
+  healthApi,
+  internshipsApi,
+  intelligenceApi,
+  UserProfile,
+} from "@/lib/api";
 
 export default function StudentDashboardPage() {
   const [activeTab, setActiveTab] = useState<string>("Dashboard");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
-  const [studentProfile, setStudentProfile] = useState<StudentProfile>(mockStudentData.student);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  const { internship, progress, tasks, reports, skills, attention } = mockStudentData;
+  // Connectivity & Authentication State
+  const [backendConnected, setBackendConnected] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Application Data State (initialized with baseline prototype defaults)
+  const [studentProfile, setStudentProfile] = useState<StudentProfile>(mockStudentData.student);
+  const [internshipDetails, setInternshipDetails] = useState<InternshipDetails>(mockStudentData.internship);
+  const [activeInternshipId, setActiveInternshipId] = useState<string | null>(null);
+  const [attentionData, setAttentionData] = useState<AttentionStatus>(mockStudentData.attention);
+  const [reportsList, setReportsList] = useState<ReportItem[]>(mockStudentData.reports);
+  const [skillsList, setSkillsList] = useState<SkillMatchItem[]>(mockStudentData.skills);
+
+  const { progress, tasks } = mockStudentData;
+
+  // 1. Check Backend Connectivity
+  const checkHealth = useCallback(async () => {
+    try {
+      const health = await healthApi.check();
+      if (health.status === "healthy") {
+        setBackendConnected(true);
+        return true;
+      }
+    } catch {
+      setBackendConnected(false);
+    }
+    return false;
+  }, []);
+
+  // 2. Load Current User Session
+  const loadUserSession = useCallback(async () => {
+    const token = authStorage.getToken();
+    if (!token) {
+      setCurrentUser(null);
+      return;
+    }
+    try {
+      const user = await authApi.getMe();
+      setCurrentUser(user);
+      setStudentProfile((prev) => ({
+        ...prev,
+        name: user.full_name,
+        email: user.email,
+      }));
+    } catch {
+      setCurrentUser(null);
+    }
+  }, []);
+
+  // 3. Fetch Real Backend Data
+  const loadBackendData = useCallback(async () => {
+    try {
+      // List available internships
+      const backendInternships = await internshipsApi.list();
+      if (backendInternships && backendInternships.length > 0) {
+        const primary = backendInternships[0];
+        setActiveInternshipId(primary.id);
+        setInternshipDetails({
+          company: primary.company_name || "CloudScale Distributed Systems",
+          role: primary.title,
+          mentor: "Dr. Marcus Vance",
+          mentorTitle: "Staff Systems Architect",
+          mentorEmail: "m.vance@cloudscale.io",
+          location: primary.location || "Seattle, WA / Remote",
+          term: "Fall 2026 Cohort",
+          startDate: primary.start_date ? primary.start_date.split("T")[0] : "Aug 15, 2026",
+          endDate: primary.end_date ? primary.end_date.split("T")[0] : "Nov 07, 2026",
+          status: primary.status === "Open" ? "Active" : "Active",
+          stipend: primary.stipend || "$1,800 / month",
+        });
+
+        // Fetch reports for this internship
+        const backendReports = await internshipsApi.listReports(primary.id);
+        if (backendReports && backendReports.length > 0) {
+          const mappedReports: ReportItem[] = backendReports.map((r) => ({
+            week: r.week_number,
+            status: (r.status === "Approved" ? "Approved" : "Pending Submission") as "Approved" | "Pending Submission",
+            hoursLogged: r.hours_logged,
+            mentorScore: r.mentor_score,
+            submissionDate: r.submission_date ? r.submission_date.split("T")[0] : undefined,
+          }));
+          setReportsList(mappedReports);
+        }
+
+        // Fetch Intelligence: Skill Gap
+        try {
+          const skillGap = await intelligenceApi.getInternshipSkillGap(primary.id);
+          if (skillGap) {
+            const mappedSkills: SkillMatchItem[] = [
+              ...skillGap.matched_skills.map((s) => ({
+                skill: s,
+                studentLevel: "Advanced" as const,
+                requiredLevel: "Intermediate" as const,
+                matchStatus: "Met" as const,
+                progressPct: 100,
+              })),
+              ...skillGap.missing_skills.map((s) => ({
+                skill: s,
+                studentLevel: "Beginner" as const,
+                requiredLevel: "Intermediate" as const,
+                matchStatus: "Missing" as const,
+                progressPct: 40,
+              })),
+            ];
+            if (mappedSkills.length > 0) {
+              setSkillsList(mappedSkills);
+            }
+          }
+        } catch {
+          // Keep default skills if error
+        }
+      }
+
+      // Fetch Intelligence: Progress Attention Evaluation
+      try {
+        const attRes = await intelligenceApi.evaluateAttention({
+          progress_consistency: 90,
+          task_completion: 85,
+          report_submission: 95,
+          mentor_feedback: 90,
+        });
+        if (attRes) {
+          setAttentionData({
+            status: attRes.status as "ON_TRACK" | "MONITOR" | "NEEDS_ATTENTION",
+            attentionScore: Number(attRes.score),
+            health: attRes.status === "ON_TRACK" ? "Healthy" : "Attention Needed",
+            riskScore: Math.max(0, 100 - Number(attRes.score)),
+            lastEvaluated: "Just now (Live Intelligence Engine)",
+            flaggedReasons: attRes.reasons,
+            reasons: attRes.reasons,
+            recommendedActions: attRes.recommendations,
+            recommendations: attRes.recommendations,
+          });
+        }
+      } catch {
+        // Keep default attention data if evaluation fails
+      }
+    } catch {
+      // Backend not yet reachable
+    }
+  }, []);
+
+  // Initialization Effect
+  useEffect(() => {
+    async function init() {
+      const isHealthy = await checkHealth();
+      await loadUserSession();
+      if (isHealthy) {
+        await loadBackendData();
+      }
+    }
+    init();
+  }, [checkHealth, loadUserSession, loadBackendData]);
 
   const handleActionClick = () => {
     setActiveTab("Weekly Reports");
+  };
+
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    setStudentProfile((prev) => ({
+      ...prev,
+      name: user.full_name,
+      email: user.email,
+    }));
+    loadBackendData();
+  };
+
+  const handleLogout = () => {
+    authApi.logout();
+    setCurrentUser(null);
   };
 
   return (
@@ -44,6 +226,10 @@ export default function StudentDashboardPage() {
         <TopNavbar
           activeTabTitle={activeTab}
           onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+          currentUser={currentUser}
+          backendConnected={backendConnected}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Scrollable Content Area */}
@@ -53,7 +239,7 @@ export default function StudentDashboardPage() {
               {/* Header Hero */}
               <DashboardHeader
                 student={studentProfile}
-                internship={internship}
+                internship={internshipDetails}
                 onActionClick={handleActionClick}
                 onNavigateTab={setActiveTab}
               />
@@ -62,7 +248,7 @@ export default function StudentDashboardPage() {
               <section aria-label="Student Internship Metrics">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {/* Card 1: Internship Status */}
-                  <InternshipStatusCard internship={internship} />
+                  <InternshipStatusCard internship={internshipDetails} />
 
                   {/* Card 2: Overall Progress */}
                   <ProgressCard
@@ -75,15 +261,15 @@ export default function StudentDashboardPage() {
 
                   {/* Card 4: Reports Submitted */}
                   <ReportsSubmittedCard
-                    reports={reports}
+                    reports={reportsList}
                     onNavigateToReports={() => setActiveTab("Weekly Reports")}
                   />
 
-                  {/* Card 5: Skill Match */}
-                  <SkillMatchCard skills={skills} />
+                  {/* Card 5: Skill Match (Intelligence Module) */}
+                  <SkillMatchCard skills={skillsList} />
 
-                  {/* Card 6: Attention Status (Explainable Early-Intervention) */}
-                  <AttentionStatusCard attention={attention} />
+                  {/* Card 6: Attention Status (Explainable Progress Monitoring) */}
+                  <AttentionStatusCard attention={attentionData} />
                 </div>
               </section>
 
@@ -102,8 +288,8 @@ export default function StudentDashboardPage() {
                       View Full Profile →
                     </button>
                     <span className="inline-flex items-center gap-1 text-slate-400">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      Student Portal • Active
+                      <span className={`h-2 w-2 rounded-full ${backendConnected ? "bg-emerald-500" : "bg-amber-500"}`} />
+                      {backendConnected ? "Live Backend API Active" : "Mock Data Active"}
                     </span>
                   </div>
                 </div>
@@ -124,10 +310,10 @@ export default function StudentDashboardPage() {
 
           {activeTab === "Progress" && (
             <InternshipProgressView
-              internship={internship}
+              internship={internshipDetails}
               progress={progress}
               tasks={tasks}
-              attention={attention}
+              attention={attentionData}
               timeline={mockStudentData.weeklyTimeline}
               onNavigateToWeeklyReport={() => setActiveTab("Weekly Reports")}
             />
@@ -135,9 +321,11 @@ export default function StudentDashboardPage() {
 
           {activeTab === "Weekly Reports" && (
             <WeeklyReportView
-              attention={attention}
+              attention={attentionData}
               initialReports={mockStudentData.weeklyReports}
               initialWeek={progress.currentWeek}
+              internshipId={activeInternshipId || undefined}
+              studentId={currentUser ? currentUser.id : undefined}
               onBackToProgress={() => setActiveTab("Progress")}
             />
           )}
@@ -154,6 +342,13 @@ export default function StudentDashboardPage() {
             )}
         </main>
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }

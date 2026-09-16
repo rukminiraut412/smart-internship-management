@@ -2,10 +2,8 @@
 
 import React, { useState } from "react";
 import {
-  TrendingUpIcon,
   DocumentTextIcon,
   ClockIcon,
-  SparklesIcon,
 } from "@/components/common/Icons";
 import {
   mockStudentData,
@@ -20,6 +18,8 @@ interface WeeklyReportViewProps {
   attention?: AttentionStatus;
   initialReports?: WeeklyReport[];
   initialWeek?: number;
+  internshipId?: string;
+  studentId?: string;
   onBackToProgress?: () => void;
 }
 
@@ -27,10 +27,18 @@ export function WeeklyReportView({
   attention = mockStudentData.attention,
   initialReports = mockStudentData.weeklyReports,
   initialWeek = 5,
+  internshipId,
+  studentId,
   onBackToProgress,
 }: WeeklyReportViewProps) {
   const [reports, setReports] = useState<WeeklyReport[]>(initialReports);
+  const [prevInitialReports, setPrevInitialReports] = useState<WeeklyReport[]>(initialReports);
   const [activeSubTab, setActiveSubTab] = useState<"form" | "history">("form");
+
+  if (initialReports !== prevInitialReports) {
+    setPrevInitialReports(initialReports);
+    setReports(initialReports);
+  }
 
   const handleReportSubmitted = (newReport: WeeklyReport) => {
     // Prepend newly submitted report to history
@@ -125,6 +133,8 @@ export function WeeklyReportView({
         <div className="space-y-6">
           <WeeklyReportForm
             initialWeek={initialWeek}
+            internshipId={internshipId}
+            studentId={studentId}
             onSubmitSuccess={handleReportSubmitted}
           />
 

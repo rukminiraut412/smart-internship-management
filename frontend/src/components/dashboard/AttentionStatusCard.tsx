@@ -7,7 +7,23 @@ interface Props {
 }
 
 export function AttentionStatusCard({ attention }: Props) {
-  const isHealthy = attention.health === "Healthy";
+  const statusKey = attention.status || "ON_TRACK";
+  const isHealthy = statusKey === "ON_TRACK" || attention.health === "Healthy";
+  const isMonitor = statusKey === "MONITOR";
+  const score = attention.attentionScore ?? (100 - attention.riskScore);
+
+  const displayStatus =
+    statusKey === "NEEDS_ATTENTION"
+      ? "NEEDS ATTENTION"
+      : statusKey === "MONITOR"
+      ? "MONITOR"
+      : "ON TRACK";
+
+  const statusBadgeClass = isHealthy
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : isMonitor
+    ? "bg-amber-50 text-amber-700 border-amber-200"
+    : "bg-rose-50 text-rose-700 border-rose-200";
 
   return (
     <div className="rounded-xl border border-indigo-100 bg-linear-to-br from-white via-indigo-50/20 to-white p-5 shadow-xs hover:shadow-sm transition-shadow">
@@ -21,19 +37,23 @@ export function AttentionStatusCard({ attention }: Props) {
               <h2 className="text-sm font-bold text-slate-900">Attention Status</h2>
               <span className="inline-flex items-center gap-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 border border-indigo-200">
                 <SparklesIcon className="w-3 h-3 text-indigo-500" />
-                Explainable AI
+                Deterministic Analytics
               </span>
             </div>
-            <p className="text-xs text-slate-500">Early-Intervention Health Layer</p>
+            <p className="text-xs text-slate-500">Early-Intervention Progress Layer</p>
           </div>
         </div>
 
         <div className="text-right">
-          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-            <CheckCircleIcon className="w-3.5 h-3.5 mr-1 text-emerald-500" />
-            {attention.health}
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border ${statusBadgeClass}`}>
+            {isHealthy ? (
+              <CheckCircleIcon className="w-3.5 h-3.5 mr-1 text-emerald-500" />
+            ) : (
+              <AlertCircleIcon className="w-3.5 h-3.5 mr-1 text-amber-500" />
+            )}
+            {displayStatus}
           </span>
-          <div className="text-[10px] text-slate-400 mt-0.5">Risk Score: {attention.riskScore}/100</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Score: {score}/100</div>
         </div>
       </div>
 
