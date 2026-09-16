@@ -212,40 +212,40 @@ export function InternshipRegistrationView({
     setIsSubmitting(true);
 
     try {
-      let createdInternship: BackendInternship | null = null;
-
-      if (studentId) {
-        createdInternship = await studentsApi.registerInternship(studentId, {
-          company_name: formData.companyName.trim(),
-          internship_title: formData.internshipTitle.trim(),
-          domain: formData.domain,
-          start_date: formData.startDate ? `${formData.startDate}T09:00:00` : undefined,
-          end_date: formData.endDate ? `${formData.endDate}T17:00:00` : undefined,
-          mode: formData.mode,
-          location: formData.location.trim(),
-          required_skills: formData.requiredSkills,
-          description: formData.description.trim(),
-          mentor_name: formData.mentorName.trim(),
-          mentor_email: formData.mentorEmail.trim(),
-          mentor_phone: formData.mentorPhone.trim(),
-        });
+      if (!studentId) {
+        throw new Error("Student authentication required. Please ensure you are logged in to register an internship.");
       }
 
-      const newRegistration: RegisteredInternship = {
-        id: createdInternship?.id || `REG-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        companyName: formData.companyName.trim(),
-        internshipTitle: formData.internshipTitle.trim(),
+      const createdInternship = await studentsApi.registerInternship(studentId, {
+        company_name: formData.companyName.trim(),
+        internship_title: formData.internshipTitle.trim(),
         domain: formData.domain,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        start_date: formData.startDate ? `${formData.startDate}T09:00:00` : undefined,
+        end_date: formData.endDate ? `${formData.endDate}T17:00:00` : undefined,
         mode: formData.mode,
         location: formData.location.trim(),
-        requiredSkills: formData.requiredSkills,
+        required_skills: formData.requiredSkills,
         description: formData.description.trim(),
-        mentorName: formData.mentorName.trim(),
-        mentorEmail: formData.mentorEmail.trim(),
-        mentorPhone: formData.mentorPhone.trim(),
-        registrationStatus: createdInternship ? "Approved" : "Pending Review",
+        mentor_name: formData.mentorName.trim(),
+        mentor_email: formData.mentorEmail.trim(),
+        mentor_phone: formData.mentorPhone.trim(),
+      });
+
+      const newRegistration: RegisteredInternship = {
+        id: createdInternship.id,
+        companyName: createdInternship.company_name || formData.companyName.trim(),
+        internshipTitle: createdInternship.title,
+        domain: createdInternship.domain || formData.domain,
+        startDate: createdInternship.start_date ? createdInternship.start_date.split("T")[0] : formData.startDate,
+        endDate: createdInternship.end_date ? createdInternship.end_date.split("T")[0] : formData.endDate,
+        mode: (createdInternship.mode as "Online" | "Offline" | "Hybrid") || formData.mode,
+        location: createdInternship.location || formData.location.trim(),
+        requiredSkills: formData.requiredSkills,
+        description: createdInternship.description || formData.description.trim(),
+        mentorName: formData.mentorName.trim() || "Assigned Supervisor",
+        mentorEmail: formData.mentorEmail.trim() || "supervisor@company.com",
+        mentorPhone: formData.mentorPhone.trim() || "+1 (555) 000-0000",
+        registrationStatus: "Approved",
         submittedAt: new Date().toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -255,7 +255,7 @@ export function InternshipRegistrationView({
 
       setRegistrations((prev) => [newRegistration, ...prev]);
       setSuccessNotice(
-        `Internship Registration Submitted Successfully! Assigned ID: ${newRegistration.id}. Status: ${newRegistration.registrationStatus}.`
+        `Internship Registration Submitted Successfully! Assigned ID: ${newRegistration.id}. Status: Approved.`
       );
 
       // Reset form

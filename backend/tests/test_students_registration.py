@@ -231,3 +231,69 @@ def test_student_internships_list_returns_registered():
     user_list_resp = client.get(f"/api/students/{user.id}/internships")
     assert user_list_resp.status_code == 200
     assert len(user_list_resp.json()) == 1
+
+
+def test_student_register_internship_invalid_data():
+    """Verify validation errors (422) for invalid registration payloads."""
+    user, student, token = create_test_student()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Missing required company name
+    resp1 = client.post(
+        f"/api/students/{student.id}/register-internship",
+        json={"internship_title": "Software Engineer"},
+        headers=headers,
+    )
+    assert resp1.status_code == 422
+
+    # 2. Company name too short (< 2 chars)
+    resp2 = client.post(
+        f"/api/students/{student.id}/register-internship",
+        json={"company_name": "A", "internship_title": "Software Engineer"},
+        headers=headers,
+    )
+    assert resp2.status_code == 422
+
+    # 3. Title too short (< 2 chars)
+    resp3 = client.post(
+        f"/api/students/{student.id}/register-internship",
+        json={"company_name": "Acme Corp", "internship_title": "X"},
+        headers=headers,
+    )
+    assert resp3.status_code == 422
+
+    # 4. end_date before start_date
+    resp4 = client.post(
+        f"/api/students/{student.id}/register-internship",
+        json={
+            "company_name": "Acme Corp",
+            "internship_title": "Software Engineer",
+            "start_date": "2026-10-01T00:00:00",
+            "end_date": "2026-09-01T00:00:00",
+        },
+        headers=headers,
+    )
+    assert resp4.status_code == 422
+
+
+def test_student_register_internship_prevent_duplicate():
+    """Verify that duplicate registration for the same student, company, and title is rejected with 400."""
+    user, student, token = create_test_student()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    payload = {
+        "company_name": "NexGen AI Systems",
+        "internship_title": "Applied ML Intern",
+        "domain": "Artificial Intelligence",
+        "mode": "Hybrid",
+    }
+
+    # First registration succeeds
+    resp1 = client.post(f"/api/students/{student.id}/register-internship", json=payload, headers=headers)
+    assert resp1.status_code == 201
+
+    # Second registration with identical company and title should be rejected
+    resp2 = client.post(f"/api/students/{student.id}/register-internship", json=payload, headers=headers)
+    assert resp2.status_code == 400
+    assert "already exists" in resp2.json()["detail"].lower()
+

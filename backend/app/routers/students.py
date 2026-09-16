@@ -289,7 +289,26 @@ def register_student_internship(
         db.add(company)
         db.flush()
 
-    # 4. Check if supervisor email corresponds to an existing Mentor account
+    # 4. Check for duplicate registration: same student, same company, same internship title
+    clean_title = payload.internship_title.strip()
+    existing_duplicate = (
+        db.query(Application)
+        .join(Internship, Application.internship_id == Internship.id)
+        .filter(
+            Application.student_id == student.id,
+            Internship.company_id == company.id,
+            Internship.title.ilike(clean_title),
+            Internship.status == "Active",
+        )
+        .first()
+    )
+    if existing_duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"An active internship registration already exists for '{clean_company_name}' and role '{clean_title}'",
+        )
+
+    # 5. Check if supervisor email corresponds to an existing Mentor account
     mentor_id = None
     if payload.mentor_email:
         mentor_user = (

@@ -142,12 +142,29 @@ export default function StudentDashboardPage() {
 
       if (primary) {
         setActiveInternshipId(primary.id);
+
+        let mentorName = "Dr. Marcus Vance";
+        let mentorEmail = "m.vance@cloudscale.io";
+        let mentorTitle = "Staff Systems Architect";
+
+        if (primary.description) {
+          const supervisorMatch = primary.description.match(/Supervisor:\s*([^|\]]+)/);
+          if (supervisorMatch) {
+            mentorName = supervisorMatch[1].trim();
+            mentorTitle = "Host Organization Supervisor";
+          }
+          const emailMatch = primary.description.match(/Email:\s*([^|\]]+)/);
+          if (emailMatch) {
+            mentorEmail = emailMatch[1].trim();
+          }
+        }
+
         setInternshipDetails({
           company: primary.company_name || "CloudScale Distributed Systems",
           role: primary.title,
-          mentor: "Dr. Marcus Vance",
-          mentorTitle: "Staff Systems Architect",
-          mentorEmail: "m.vance@cloudscale.io",
+          mentor: mentorName,
+          mentorTitle: mentorTitle,
+          mentorEmail: mentorEmail,
           location: primary.location || "Seattle, WA / Remote",
           term: "Fall 2026 Cohort",
           startDate: primary.start_date ? primary.start_date.split("T")[0] : "Aug 15, 2026",
@@ -400,8 +417,8 @@ export default function StudentDashboardPage() {
           {activeTab === "Internship Registration" && (
             <InternshipRegistrationView
               studentId={currentUser ? (currentUser.student_id || currentUser.id) : undefined}
-              onRegistrationSuccess={() => {
-                loadBackendData();
+              onRegistrationSuccess={async () => {
+                await loadBackendData();
                 setActiveTab("Dashboard");
               }}
             />
