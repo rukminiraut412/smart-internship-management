@@ -36,3 +36,10 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def init_db() -> None:
+    """Initialize database tables for all registered models."""
+    import app.models  # noqa: F401 - ensures all models are registered with Base metadata
+    Base.metadata.create_all(bind=engine)
+
