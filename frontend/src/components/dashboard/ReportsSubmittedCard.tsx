@@ -1,5 +1,9 @@
 import React from "react";
-import { ClipboardCheckIcon, CheckCircleIcon, ClockIcon } from "@/components/common/Icons";
+import {
+  ClipboardCheckIcon,
+  CheckCircleIcon,
+  ClockIcon,
+} from "@/components/common/Icons";
 import { ReportItem } from "@/data/mockData";
 
 interface Props {
@@ -7,66 +11,112 @@ interface Props {
   onNavigateToReports?: () => void;
 }
 
-export function ReportsSubmittedCard({ reports, onNavigateToReports }: Props) {
-  const approvedCount = reports.filter((r) => r.status === "Approved").length;
-  const pendingCount = reports.filter((r) => r.status === "Pending Submission").length;
+export function ReportsSubmittedCard({
+  reports,
+  onNavigateToReports,
+}: Props) {
+  const approvedCount = reports.filter(
+    (report) => report.status === "Approved"
+  ).length;
+
+  const pendingCount = reports.filter(
+    (report) => report.status === "Pending Submission"
+  ).length;
+
+  const totalReports = reports.length;
+
+  const completionPct =
+    totalReports > 0
+      ? Math.round((approvedCount / totalReports) * 100)
+      : 0;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-shadow">
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div className="flex items-center space-x-2">
-          <div className="p-2 rounded-lg bg-teal-50 text-teal-600">
-            <ClipboardCheckIcon className="w-5 h-5" />
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+            <ClipboardCheckIcon className="h-5 w-5" />
           </div>
+
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Reports Submitted</h2>
-            <p className="text-xs text-slate-500">Weekly Cadence</p>
+            <h2 className="text-sm font-bold text-slate-900">
+              Weekly Reports
+            </h2>
+            <p className="text-xs text-slate-500">
+              Submission status
+            </p>
           </div>
         </div>
-        <div className="text-right">
-          <span className="text-sm font-bold text-teal-600">{approvedCount}</span>
-          <span className="text-xs text-slate-400">/{reports.length} Approved</span>
-        </div>
+
+        <span className="text-lg font-bold text-slate-900">
+          {approvedCount}
+          <span className="text-xs font-medium text-slate-400">
+            {" "}
+            / {totalReports}
+          </span>
+        </span>
       </div>
 
-      <div className="mt-4 space-y-2.5">
-        {reports.map((report) => (
+      {/* Progress */}
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium text-slate-500">
+            Approved reports
+          </span>
+
+          <span className="text-xs font-bold text-teal-600">
+            {completionPct}%
+          </span>
+        </div>
+
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
           <div
-            key={report.week}
-            className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2 text-xs"
-          >
-            <div className="flex items-center space-x-2">
-              {report.status === "Approved" ? (
-                <CheckCircleIcon className="w-4 h-4 text-teal-500" />
-              ) : (
-                <ClockIcon className="w-4 h-4 text-amber-500" />
-              )}
-              <span className="font-semibold text-slate-800">Week {report.week} Report</span>
-              {report.mentorScore && (
-                <span className="text-[11px] text-slate-400 font-medium">({report.mentorScore}/5.0)</span>
-              )}
-            </div>
-            <span
-              className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
-                report.status === "Approved"
-                  ? "bg-teal-100 text-teal-800"
-                  : "bg-amber-100 text-amber-800"
-              }`}
-            >
-              {report.status}
-            </span>
-          </div>
-        ))}
+            className="h-full rounded-full bg-teal-500 transition-all duration-500"
+            style={{ width: `${completionPct}%` }}
+          />
+        </div>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-        <span className="text-slate-500">{pendingCount} report requires submission</span>
+      {/* Status Summary */}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
+          <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
+
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              Approved
+            </p>
+            <p className="text-sm font-bold text-slate-800">
+              {approvedCount}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+          <ClockIcon className="h-4 w-4 text-amber-600" />
+
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+              Pending
+            </p>
+            <p className="text-sm font-bold text-slate-800">
+              {pendingCount}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Action */}
+      <div className="mt-4">
         <button
           type="button"
           onClick={onNavigateToReports}
-          className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50"
         >
-          Submit Log →
+          {pendingCount > 0
+            ? "Submit Weekly Report →"
+            : "View Report History →"}
         </button>
       </div>
     </div>
