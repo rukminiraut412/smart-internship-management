@@ -14,32 +14,48 @@ interface Props {
 export function AttentionStatusCard({ attention }: Props) {
   const statusKey = attention.status || "ON_TRACK";
 
-  const isHealthy =
-    statusKey === "ON_TRACK" || attention.health === "Healthy";
-
+  const isOnTrack = statusKey === "ON_TRACK";
   const isMonitor = statusKey === "MONITOR";
 
-  const score =
-    attention.attentionScore ?? (100 - attention.riskScore);
+  // Supports both backend intelligence data and existing mock-data structure.
+  const score = Math.min(
+    100,
+    Math.max(
+      0,
+      attention.attentionScore ??
+        (attention as AttentionStatus & { score?: number }).score ??
+        100 - (attention.riskScore ?? 0)
+    )
+  );
+
+  const reasons =
+    attention.reasons?.length > 0
+      ? attention.reasons
+      : attention.flaggedReasons ?? [];
+
+  const recommendations =
+    attention.recommendations?.length > 0
+      ? attention.recommendations
+      : attention.recommendedActions ?? [];
 
   const displayStatus =
     statusKey === "NEEDS_ATTENTION"
       ? "NEEDS ATTENTION"
       : statusKey === "MONITOR"
-      ? "MONITOR"
-      : "ON TRACK";
+        ? "MONITOR"
+        : "ON TRACK";
 
-  const statusBadgeClass = isHealthy
+  const statusBadgeClass = isOnTrack
     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
     : isMonitor
-    ? "border-amber-200 bg-amber-50 text-amber-700"
-    : "border-rose-200 bg-rose-50 text-rose-700";
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : "border-rose-200 bg-rose-50 text-rose-700";
 
-  const scoreTextClass = isHealthy
+  const scoreTextClass = isOnTrack
     ? "text-emerald-600"
     : isMonitor
-    ? "text-amber-600"
-    : "text-rose-600";
+      ? "text-amber-600"
+      : "text-rose-600";
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -73,7 +89,7 @@ export function AttentionStatusCard({ attention }: Props) {
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${statusBadgeClass}`}
           >
-            {isHealthy ? (
+            {isOnTrack ? (
               <CheckCircleIcon className="mr-1 h-3.5 w-3.5" />
             ) : (
               <AlertCircleIcon className="mr-1 h-3.5 w-3.5" />
@@ -98,7 +114,7 @@ export function AttentionStatusCard({ attention }: Props) {
           </div>
 
           <div className={`text-2xl font-bold ${scoreTextClass}`}>
-            {score}
+            {Math.round(score)}
             <span className="text-xs font-medium text-slate-400">
               /100
             </span>
@@ -108,14 +124,14 @@ export function AttentionStatusCard({ attention }: Props) {
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
           <div
             className={`h-full rounded-full transition-all duration-500 ${
-              isHealthy
+              isOnTrack
                 ? "bg-emerald-500"
                 : isMonitor
-                ? "bg-amber-500"
-                : "bg-rose-500"
+                  ? "bg-amber-500"
+                  : "bg-rose-500"
             }`}
             style={{
-              width: `${Math.min(100, Math.max(0, score))}%`,
+              width: `${score}%`,
             }}
           />
         </div>
@@ -134,27 +150,33 @@ export function AttentionStatusCard({ attention }: Props) {
         </div>
 
         <div className="space-y-2">
-          {attention.flaggedReasons.slice(0, 3).map((reason, index) => (
-            <div
-              key={index}
-              className="flex items-start gap-2.5 rounded-xl border border-slate-100 bg-white p-2.5"
-            >
-              {isHealthy ? (
-                <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-              ) : (
-                <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              )}
+          {reasons.length > 0 ? (
+            reasons.slice(0, 3).map((reason, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-2.5 rounded-xl border border-slate-100 bg-white p-2.5"
+              >
+                {isOnTrack ? (
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                ) : (
+                  <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                )}
 
-              <span className="text-xs leading-relaxed text-slate-700">
-                {reason}
-              </span>
+                <span className="text-xs leading-relaxed text-slate-700">
+                  {reason}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-500">
+              No attention factors are currently available.
             </div>
-          ))}
+          )}
         </div>
       </div>
 
       {/* Recommended Actions */}
-      {attention.recommendedActions.length > 0 && (
+      {recommendations.length > 0 && (
         <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3.5">
           <div className="mb-2 flex items-center gap-2">
             <SparklesIcon className="h-4 w-4 text-indigo-600" />
@@ -165,17 +187,15 @@ export function AttentionStatusCard({ attention }: Props) {
           </div>
 
           <ul className="space-y-1.5">
-            {attention.recommendedActions.slice(0, 2).map(
-              (action, index) => (
-                <li
-                  key={index}
-                  className="flex items-start gap-2 text-xs leading-relaxed text-indigo-800"
-                >
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-indigo-500" />
-                  <span>{action}</span>
-                </li>
-              )
-            )}
+            {recommendations.slice(0, 2).map((action, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-2 text-xs leading-relaxed text-indigo-800"
+              >
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-indigo-500" />
+                <span>{action}</span>
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -183,7 +203,7 @@ export function AttentionStatusCard({ attention }: Props) {
       {/* Footer */}
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
         <span className="text-[10px] text-slate-400">
-          Last evaluated: {attention.lastEvaluated}
+          Last evaluated: {attention.lastEvaluated || "Just now"}
         </span>
 
         <span className="text-[10px] font-medium text-slate-400">
