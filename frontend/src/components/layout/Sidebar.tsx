@@ -8,8 +8,13 @@ import {
   TrendingUpIcon,
   TargetIcon,
   XIcon,
+  AcademicCapIcon,
+  DocumentTextIcon,
+  ClipboardCheckIcon,
+  ShieldExclamationIcon,
 } from "@/components/common/Icons";
 import { mockStudentData } from "@/data/mockData";
+import { UserProfile } from "@/lib/api";
 
 export interface NavItem {
   id: string;
@@ -19,12 +24,8 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-export const navItems: NavItem[] = [
-  {
-    id: "Dashboard",
-    label: "Dashboard",
-    icon: DashboardIcon,
-  },
+export const studentNavItems: NavItem[] = [
+  { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
   {
     id: "My Internship",
     label: "My Internship",
@@ -40,9 +41,68 @@ export const navItems: NavItem[] = [
     label: "Intelligence",
     icon: TargetIcon,
   },
+  { id: "My Profile", label: "My Profile", icon: UserIcon },
+];
+
+export const mentorNavItems: NavItem[] = [
+  { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
+  {
+    id: "My Interns",
+    label: "My Interns",
+    icon: AcademicCapIcon,
+  },
+  {
+    id: "Weekly Reports",
+    label: "Weekly Reports",
+    icon: DocumentTextIcon,
+  },
+  {
+    id: "Tasks",
+    label: "Tasks",
+    icon: ClipboardCheckIcon,
+  },
+  {
+    id: "Evaluations",
+    label: "Evaluations",
+    icon: TrendingUpIcon,
+  },
   {
     id: "My Profile",
     label: "My Profile",
+    icon: UserIcon,
+  },
+];
+
+export const adminNavItems: NavItem[] = [
+  { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
+  {
+    id: "Students",
+    label: "Students",
+    icon: AcademicCapIcon,
+  },
+  {
+    id: "Internships",
+    label: "Internships",
+    icon: BriefcaseIcon,
+  },
+  {
+    id: "Applications",
+    label: "Applications",
+    icon: DocumentTextIcon,
+  },
+  {
+    id: "Mentors",
+    label: "Mentors",
+    icon: UserIcon,
+  },
+  {
+    id: "Reports & Alerts",
+    label: "Reports & Alerts",
+    icon: ShieldExclamationIcon,
+  },
+  {
+    id: "Profile",
+    label: "Profile",
     icon: UserIcon,
   },
 ];
@@ -52,6 +112,8 @@ interface SidebarProps {
   setActiveTab: (tabId: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  role?: "student" | "mentor" | "admin" | string;
+  currentUser?: UserProfile | null;
 }
 
 export function Sidebar({
@@ -59,8 +121,42 @@ export function Sidebar({
   setActiveTab,
   isOpen,
   onClose,
+  role = "student",
+  currentUser,
 }: SidebarProps) {
   const { student } = mockStudentData;
+
+  const navItems =
+    role === "mentor"
+      ? mentorNavItems
+      : role === "admin"
+      ? adminNavItems
+      : studentNavItems;
+
+  const portalTitle =
+    role === "mentor"
+      ? "Industry Mentorship Portal"
+      : role === "admin"
+      ? "Institutional Admin Portal"
+      : "Student Internship Portal";
+
+  const userDisplayName = currentUser
+    ? currentUser.full_name
+    : student.name;
+
+  const userInitials = userDisplayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const roleLabel =
+    role === "mentor"
+      ? "Industry Mentor"
+      : role === "admin"
+      ? "System Administrator"
+      : "Student";
 
   return (
     <>
@@ -100,78 +196,98 @@ export function Sidebar({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden cursor-pointer"
             aria-label="Close sidebar"
           >
             <XIcon className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Institution Info */}
+        {/* Institution / Role Info Badge */}
         <div className="px-4 py-3 bg-slate-50/70 border-b border-slate-100">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Portal
+          <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+            {role.toUpperCase()} PORTAL
           </div>
 
-          <div className="mt-0.5 text-xs font-medium text-slate-700 truncate">
-            {student.university}
+          <div className="text-xs font-semibold text-slate-700 truncate mt-0.5">
+            {portalTitle}
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-5 overflow-y-auto">
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
 
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    onClose();
-                  }}
-                  className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
-                    isActive
-                      ? "bg-indigo-50 text-indigo-700 font-semibold"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-indigo-50 text-indigo-700 font-semibold shadow-2xs"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center space-x-3">
                   <Icon
-                    className={`w-5 h-5 mr-3 shrink-0 ${
-                      isActive ? "text-indigo-600" : "text-slate-400"
+                    className={`w-5 h-5 ${
+                      isActive
+                        ? "text-indigo-600"
+                        : "text-slate-400"
                     }`}
                   />
 
                   <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
+                </div>
+
+                {item.badge && (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      item.badgeColor ||
+                      "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Student Profile Footer */}
+        {/* Profile Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50/50">
           <div className="flex items-center space-x-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm ring-2 ring-indigo-200">
-              {student.avatarInitials}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm ring-2 ring-indigo-200">
+              {userInitials}
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-slate-900 truncate">
-                {student.name}
+                {userDisplayName}
               </div>
 
               <div className="text-[11px] text-slate-500 truncate">
-                {student.studentId}
+                {currentUser
+                  ? currentUser.email
+                  : student.email}
               </div>
             </div>
           </div>
 
-          <div className="mt-2 text-[10px] text-slate-400 uppercase tracking-wider font-medium">
-            Student Role • Active
+          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+            <span>{roleLabel}</span>
+
+            <span className="flex items-center gap-1 text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Active
+            </span>
           </div>
         </div>
       </aside>

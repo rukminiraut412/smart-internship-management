@@ -31,34 +31,47 @@ export function ReportsSubmittedCard({
       : 0;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-            <ClipboardCheckIcon className="h-5 w-5" />
+    <div
+      onClick={onNavigateToReports}
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-all ${
+        onNavigateToReports
+          ? "cursor-pointer hover:border-indigo-300"
+          : ""
+      }`}
+    >
+      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="flex items-center space-x-2">
+          <div className="p-2 rounded-lg bg-teal-50 text-teal-600">
+            <ClipboardCheckIcon className="w-5 h-5" />
           </div>
 
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Weekly Reports
+              Reports
             </h2>
             <p className="text-xs text-slate-500">
-              Submission status
+              Weekly Cadence
             </p>
           </div>
         </div>
 
-        <span className="text-lg font-bold text-slate-900">
-          {approvedCount}
-          <span className="text-xs font-medium text-slate-400">
-            {" "}
-            / {totalReports}
+        <div className="text-right">
+          <span className="text-sm font-bold text-teal-600">
+            {approvedCount}
           </span>
-        </span>
+
+          <span className="text-xs text-slate-400">
+            /{reports.length} Submitted
+          </span>
+
+          {pendingCount > 0 && (
+            <div className="text-[11px] font-semibold text-amber-600">
+              {pendingCount} Pending
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Progress */}
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium text-slate-500">
@@ -78,7 +91,6 @@ export function ReportsSubmittedCard({
         </div>
       </div>
 
-      {/* Status Summary */}
       <div className="mt-4 grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
           <CheckCircleIcon className="h-4 w-4 text-emerald-600" />
@@ -87,6 +99,7 @@ export function ReportsSubmittedCard({
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
               Approved
             </p>
+
             <p className="text-sm font-bold text-slate-800">
               {approvedCount}
             </p>
@@ -100,6 +113,7 @@ export function ReportsSubmittedCard({
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
               Pending
             </p>
+
             <p className="text-sm font-bold text-slate-800">
               {pendingCount}
             </p>
@@ -107,7 +121,6 @@ export function ReportsSubmittedCard({
         </div>
       </div>
 
-      {/* Action */}
       <div className="mt-4">
         <button
           type="button"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   UserIcon,
   MailIcon,
@@ -15,9 +15,11 @@ import {
   TrashIcon,
 } from "@/components/common/Icons";
 import { StudentProfile } from "@/data/mockData";
+import { studentsApi } from "@/lib/api";
 
 interface Props {
   initialProfile: StudentProfile;
+  studentId?: string;
   onProfileUpdate?: (updated: StudentProfile) => void;
 }
 
@@ -33,6 +35,7 @@ interface FormErrors {
 
 export function StudentProfileView({
   initialProfile,
+  studentId,
   onProfileUpdate,
 }: Props) {
   const [profile, setProfile] =
@@ -45,31 +48,47 @@ export function StudentProfileView({
 
   const [newSkillInput, setNewSkillInput] = useState("");
 
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [errors, setErrors] =
+    useState<FormErrors>({});
 
   const [successMessage, setSuccessMessage] =
+    useState<string | null>(null);
+
+  const [apiError, setApiError] =
+    useState<string | null>(null);
+
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  const [resumeUploadedNotice, setResumeUploadedNotice] =
     useState<string | null>(null);
 
   // --------------------------------------------------
   // VALIDATION
   // --------------------------------------------------
 
-  const validateForm = (data: StudentProfile): boolean => {
+  const validateForm = (
+    data: StudentProfile
+  ): boolean => {
     const validationErrors: FormErrors = {};
 
     if (!data.name.trim()) {
-      validationErrors.name = "Full name is required";
+      validationErrors.name =
+        "Full name is required";
     } else if (data.name.trim().length < 2) {
       validationErrors.name =
         "Name must be at least 2 characters";
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!data.email.trim()) {
       validationErrors.email =
         "Email address is required";
-    } else if (!emailRegex.test(data.email.trim())) {
+    } else if (
+      !emailRegex.test(data.email.trim())
+    ) {
       validationErrors.email =
         "Please enter a valid email address";
     }
@@ -97,15 +116,115 @@ export function StudentProfileView({
         "Academic year is required";
     }
 
-    if (!data.skills || data.skills.length === 0) {
+    if (
+      !data.skills ||
+      data.skills.length === 0
+    ) {
       validationErrors.skills =
         "At least one skill is required";
     }
 
     setErrors(validationErrors);
 
-    return Object.keys(validationErrors).length === 0;
+    return (
+      Object.keys(validationErrors).length === 0
+    );
   };
+
+  // --------------------------------------------------
+  // LOAD PROFILE FROM BACKEND
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    studentsApi
+      .getProfile(studentId)
+      .then((res) => {
+        if (res) {
+          const mapped: StudentProfile = {
+            name:
+              res.name || initialProfile.name,
+
+            studentId:
+              res.student_id_number ||
+              initialProfile.studentId,
+
+            email:
+              res.email || initialProfile.email,
+
+            phone:
+              res.phone || initialProfile.phone,
+
+            college:
+              res.college ||
+              initialProfile.college,
+
+            university:
+              res.university ||
+              initialProfile.university,
+
+            department:
+              res.department ||
+              initialProfile.department,
+
+            year:
+              res.year_of_study ||
+              initialProfile.year,
+
+            gpa:
+              res.gpa !== null &&
+              res.gpa !== undefined
+                ? res.gpa
+                : initialProfile.gpa,
+
+            avatarInitials: (
+              res.name || initialProfile.name
+            )
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2),
+
+            skills:
+              res.skills &&
+              res.skills.length > 0
+                ? res.skills
+                : initialProfile.skills,
+
+            resume: {
+              fileName: res.resume_url
+                ? res.resume_url.split("/").pop() ||
+                  "Resume_2026.pdf"
+                : initialProfile.resume.fileName,
+
+              status:
+                initialProfile.resume.status,
+
+              uploadDate:
+                initialProfile.resume.uploadDate,
+
+              fileSize:
+                initialProfile.resume.fileSize,
+            },
+          };
+
+          setProfile(mapped);
+          setFormData(mapped);
+
+          if (onProfileUpdate) {
+            onProfileUpdate(mapped);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          "Could not fetch student profile from backend:",
+          err
+        );
+      });
+  }, [studentId, initialProfile, onProfileUpdate]);
 
   // --------------------------------------------------
   // EDIT PROFILE
@@ -115,36 +234,158 @@ export function StudentProfileView({
     setFormData({ ...profile });
     setErrors({});
     setSuccessMessage(null);
+    setApiError(null);
+    setResumeUploadedNotice(null);
     setIsEditing(true);
   };
 
   const handleCancelEdit = () => {
     setFormData({ ...profile });
     setErrors({});
+    setApiError(null);
     setIsEditing(false);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+
+    setApiError(null);
 
     if (!validateForm(formData)) {
       return;
     }
 
-    setProfile(formData);
+    // No authenticated student ID:
+    // keep the existing local functionality.
+    if (!studentId) {
+      setProfile(formData);
 
-    if (onProfileUpdate) {
-      onProfileUpdate(formData);
+      if (onProfileUpdate) {
+        onProfileUpdate(formData);
+      }
+
+      setIsEditing(false);
+
+      setSuccessMessage(
+        "Student profile updated locally (not authenticated)!"
+      );
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+
+      return;
     }
 
-    setIsEditing(false);
-    setSuccessMessage(
-      "Student profile updated successfully."
-    );
+    setIsSaving(true);
 
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 4000);
+    try {
+      const res =
+        await studentsApi.updateProfile(
+          studentId,
+          {
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            college: formData.college.trim(),
+            university:
+              formData.university.trim(),
+            department:
+              formData.department.trim(),
+            year_of_study:
+              formData.year.trim(),
+            gpa: formData.gpa,
+            skills: formData.skills,
+            resume_url:
+              formData.resume.fileName,
+          }
+        );
+
+      const updated: StudentProfile = {
+        name:
+          res.name || formData.name,
+
+        studentId:
+          res.student_id_number ||
+          formData.studentId,
+
+        email:
+          res.email || formData.email,
+
+        phone:
+          res.phone || formData.phone,
+
+        college:
+          res.college || formData.college,
+
+        university:
+          res.university ||
+          formData.university,
+
+        department:
+          res.department ||
+          formData.department,
+
+        year:
+          res.year_of_study ||
+          formData.year,
+
+        gpa:
+          res.gpa !== null &&
+          res.gpa !== undefined
+            ? res.gpa
+            : formData.gpa,
+
+        avatarInitials: (
+          res.name || formData.name
+        )
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2),
+
+        skills:
+          res.skills &&
+          res.skills.length > 0
+            ? res.skills
+            : formData.skills,
+
+        resume: formData.resume,
+      };
+
+      setProfile(updated);
+      setFormData(updated);
+
+      if (onProfileUpdate) {
+        onProfileUpdate(updated);
+      }
+
+      setIsEditing(false);
+
+      setSuccessMessage(
+        "Student profile updated and saved to database successfully!"
+      );
+
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+    } catch (err: unknown) {
+      console.error(
+        "Failed to update student profile:",
+        err
+      );
+
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to update profile. Please try again.";
+
+      setApiError(msg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // --------------------------------------------------
@@ -158,10 +399,12 @@ export function StudentProfileView({
       return;
     }
 
-    const alreadyExists = formData.skills.some(
-      (existingSkill) =>
-        existingSkill.toLowerCase() === skill.toLowerCase()
-    );
+    const alreadyExists =
+      formData.skills.some(
+        (existingSkill) =>
+          existingSkill.toLowerCase() ===
+          skill.toLowerCase()
+      );
 
     if (alreadyExists) {
       setErrors((previous) => ({
@@ -190,10 +433,13 @@ export function StudentProfileView({
     }));
   };
 
-  const handleRemoveSkill = (skillToRemove: string) => {
-    const updatedSkills = formData.skills.filter(
-      (skill) => skill !== skillToRemove
-    );
+  const handleRemoveSkill = (
+    skillToRemove: string
+  ) => {
+    const updatedSkills =
+      formData.skills.filter(
+        (skill) => skill !== skillToRemove
+      );
 
     setFormData((previous) => ({
       ...previous,
@@ -203,7 +449,8 @@ export function StudentProfileView({
     if (updatedSkills.length === 0) {
       setErrors((previous) => ({
         ...previous,
-        skills: "At least one skill is required",
+        skills:
+          "At least one skill is required",
       }));
     }
   };
@@ -232,6 +479,24 @@ export function StudentProfileView({
           <CheckCircleIcon className="w-5 h-5 text-emerald-600 shrink-0" />
 
           <span>{successMessage}</span>
+        </div>
+      )}
+
+      {/* API Error */}
+      {apiError && (
+        <div className="flex items-center space-x-2 rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 shadow-2xs">
+          <AlertCircleIcon className="w-5 h-5 text-rose-600 shrink-0" />
+
+          <span>{apiError}</span>
+        </div>
+      )}
+
+      {/* Resume Notice */}
+      {resumeUploadedNotice && (
+        <div className="flex items-center space-x-2 rounded-xl bg-indigo-50 border border-indigo-200 p-4 text-xs font-semibold text-indigo-800 shadow-2xs">
+          <CheckCircleIcon className="w-5 h-5 text-indigo-600 shrink-0" />
+
+          <span>{resumeUploadedNotice}</span>
         </div>
       )}
 
@@ -277,7 +542,7 @@ export function StudentProfileView({
             </div>
           </div>
 
-          {/* Edit Button */}
+          {/* Edit / Save Buttons */}
           {!isEditing ? (
             <button
               type="button"
@@ -293,7 +558,7 @@ export function StudentProfileView({
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 Cancel
               </button>
@@ -301,9 +566,12 @@ export function StudentProfileView({
               <button
                 type="submit"
                 form="student-profile-form"
-                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                disabled={isSaving}
+                className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Changes
+                {isSaving
+                  ? "Saving Profile..."
+                  : "Save Profile"}
               </button>
 
             </div>
@@ -336,19 +604,25 @@ export function StudentProfileView({
             <div className="space-y-3">
 
               <InfoRow
-                icon={<UserIcon className="w-4 h-4" />}
+                icon={
+                  <UserIcon className="w-4 h-4" />
+                }
                 label="Full Name"
                 value={profile.name}
               />
 
               <InfoRow
-                icon={<MailIcon className="w-4 h-4" />}
+                icon={
+                  <MailIcon className="w-4 h-4" />
+                }
                 label="Email"
                 value={profile.email}
               />
 
               <InfoRow
-                icon={<PhoneIcon className="w-4 h-4" />}
+                icon={
+                  <PhoneIcon className="w-4 h-4" />
+                }
                 label="Phone"
                 value={profile.phone}
               />
@@ -407,17 +681,18 @@ export function StudentProfileView({
 
               <div className="flex flex-wrap gap-2">
 
-                {profile.skills.map((skill, index) => (
-                  <span
-                    key={`${skill}-${index}`}
-                    className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700"
-                  >
-                    {skill}
-                  </span>
-                ))}
+                {profile.skills.map(
+                  (skill, index) => (
+                    <span
+                      key={`${skill}-${index}`}
+                      className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700"
+                    >
+                      {skill}
+                    </span>
+                  )
+                )}
 
               </div>
-
             </div>
 
             {/* Resume */}
@@ -455,15 +730,14 @@ export function StudentProfileView({
                 </span>
 
                 <span className="text-slate-400">
-                  Uploaded {profile.resume.uploadDate}
+                  Uploaded{" "}
+                  {profile.resume.uploadDate}
                 </span>
 
               </div>
 
             </div>
-
           </div>
-
         </div>
 
       ) : (
@@ -605,7 +879,9 @@ export function StudentProfileView({
                     college: e.target.value,
                   })
                 }
-                className={inputClass(errors.college)}
+                className={inputClass(
+                  errors.college
+                )}
                 placeholder="Enter college / school"
               />
             </FormField>
@@ -625,7 +901,9 @@ export function StudentProfileView({
                     department: e.target.value,
                   })
                 }
-                className={inputClass(errors.department)}
+                className={inputClass(
+                  errors.department
+                )}
                 placeholder="Enter department"
               />
             </FormField>
@@ -639,7 +917,9 @@ export function StudentProfileView({
 
               <label className="block text-xs font-bold text-slate-700">
                 Technical Skills{" "}
-                <span className="text-rose-500">*</span>
+                <span className="text-rose-500">
+                  *
+                </span>
               </label>
 
               <p className="text-[11px] text-slate-400 mt-1">
@@ -708,7 +988,6 @@ export function StudentProfileView({
               ))}
 
             </div>
-
           </div>
 
           {/* Bottom Actions */}
@@ -724,9 +1003,12 @@ export function StudentProfileView({
 
             <button
               type="submit"
-              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
+              disabled={isSaving}
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Save Profile
+              {isSaving
+                ? "Saving Profile..."
+                : "Save Profile"}
             </button>
 
           </div>
@@ -756,7 +1038,9 @@ function InfoRow({
   return (
     <div
       className={`flex items-center justify-between gap-4 py-2.5 ${
-        !last ? "border-b border-slate-100" : ""
+        !last
+          ? "border-b border-slate-100"
+          : ""
       }`}
     >
       <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">

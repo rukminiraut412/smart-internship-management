@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Company, Internship, Mentor, ProgressReport, Student
+from app.models import Application, Company, Internship, Mentor, ProgressReport, Student
 from app.schemas import (
     InternshipCreate,
     InternshipResponse,
@@ -147,12 +147,33 @@ def create_progress_report(
             detail=f"Internship with ID '{internship_id}' not found",
         )
 
-    # Verify student exists
-    student = db.query(Student).filter(Student.id == payload.student_id).first()
+    # Verify student exists: accept either canonical Student.id or authenticated User.id
+    student = (
+        db.query(Student)
+        .filter(
+            (Student.id == payload.student_id) | (Student.user_id == payload.student_id)
+        )
+        .first()
+    )
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Student with ID '{payload.student_id}' not found",
+        )
+
+    # Verify enrollment / application status if an application record exists
+    app_for_internship = (
+        db.query(Application)
+        .filter(
+            Application.internship_id == internship_id,
+            Application.student_id == student.id,
+        )
+        .first()
+    )
+    if app_for_internship and app_for_internship.status in ["Rejected", "Withdrawn"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Student is not eligible to submit reports for this internship (application inactive)",
         )
 
     # Prevent duplicate report for the same student + internship + week
@@ -160,7 +181,7 @@ def create_progress_report(
         db.query(ProgressReport)
         .filter(
             ProgressReport.internship_id == internship_id,
-            ProgressReport.student_id == payload.student_id,
+            ProgressReport.student_id == student.id,
             ProgressReport.week_number == payload.week_number,
         )
         .first()
@@ -173,7 +194,7 @@ def create_progress_report(
 
     report = ProgressReport(
         internship_id=internship_id,
-        student_id=payload.student_id,
+        student_id=student.id,
         week_number=payload.week_number,
         title=payload.title or f"Week {payload.week_number} Progress Report",
         summary=payload.summary,
@@ -211,7 +232,13 @@ def list_internship_reports(
 
     query = db.query(ProgressReport).filter(ProgressReport.internship_id == internship_id)
     if student_id:
-        query = query.filter(ProgressReport.student_id == student_id)
+        student = (
+            db.query(Student)
+            .filter((Student.id == student_id) | (Student.user_id == student_id))
+            .first()
+        )
+        resolved_id = student.id if student else student_id
+        query = query.filter(ProgressReport.student_id == resolved_id)
 
     reports = query.order_by(ProgressReport.week_number.asc()).all()
     return reports

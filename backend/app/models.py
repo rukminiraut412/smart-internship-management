@@ -56,11 +56,26 @@ class User(Base):
     role = Column(String(50), default="student", nullable=False)  # student, mentor, admin, company
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # 1-to-1 relationships with specialized profiles
-    student = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    mentor = relationship("Mentor", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    student = relationship(
+        "Student",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    mentor = relationship(
+        "Mentor",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     @property
     def student_id(self) -> Optional[str]:
@@ -83,8 +98,18 @@ class Student(Base):
     __tablename__ = "students"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    student_id_number = Column(String(100), unique=True, nullable=True, index=True)  # e.g., STU-2026-8842
+    user_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    student_id_number = Column(
+        String(100),
+        unique=True,
+        nullable=True,
+        index=True,
+    )
     phone = Column(String(50), nullable=True)
     college = Column(String(255), nullable=True)
     university = Column(String(255), nullable=True)
@@ -93,19 +118,51 @@ class Student(Base):
     gpa = Column(Float, nullable=True)
     resume_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     user = relationship("User", back_populates="student")
-    student_skills = relationship("StudentSkill", back_populates="student", cascade="all, delete-orphan")
-    applications = relationship("Application", back_populates="student", cascade="all, delete-orphan")
-    progress_reports = relationship("ProgressReport", back_populates="student", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="student", cascade="all, delete-orphan")
-    evaluations = relationship("Evaluation", back_populates="student", cascade="all, delete-orphan")
-    alerts = relationship("Alert", back_populates="student", cascade="all, delete-orphan")
+    student_skills = relationship(
+        "StudentSkill",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    applications = relationship(
+        "Application",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    progress_reports = relationship(
+        "ProgressReport",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    tasks = relationship(
+        "Task",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    evaluations = relationship(
+        "Evaluation",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
+    alerts = relationship(
+        "Alert",
+        back_populates="student",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
-        return f"<Student id={self.id} user_id={self.user_id} student_id_number={self.student_id_number}>"
+        return (
+            f"<Student id={self.id} user_id={self.user_id} "
+            f"student_id_number={self.student_id_number}>"
+        )
 
 
 # ============================================================================
@@ -117,24 +174,45 @@ class Mentor(Base):
     __tablename__ = "mentors"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    company_id = Column(String(36), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    company_id = Column(
+        String(36),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     job_title = Column(String(255), nullable=True)
     department = Column(String(255), nullable=True)
     company_name = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     user = relationship("User", back_populates="mentor")
     company = relationship("Company", back_populates="mentors")
     internships = relationship("Internship", back_populates="mentor")
     created_tasks = relationship("Task", back_populates="mentor")
-    evaluations = relationship("Evaluation", back_populates="mentor", cascade="all, delete-orphan")
+    evaluations = relationship(
+        "Evaluation",
+        back_populates="mentor",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
-        return f"<Mentor id={self.id} user_id={self.user_id} title={self.job_title}>"
+        return (
+            f"<Mentor id={self.id} user_id={self.user_id} "
+            f"title={self.job_title}>"
+        )
 
 
 # ============================================================================
@@ -152,10 +230,19 @@ class Company(Base):
     location = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
-    internships = relationship("Internship", back_populates="company", cascade="all, delete-orphan")
+    internships = relationship(
+        "Internship",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
     mentors = relationship("Mentor", back_populates="company")
 
     def __repr__(self) -> str:
@@ -171,32 +258,72 @@ class Internship(Base):
     __tablename__ = "internships"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    company_id = Column(String(36), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    mentor_id = Column(String(36), ForeignKey("mentors.id", ondelete="SET NULL"), nullable=True)
+    company_id = Column(
+        String(36),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    mentor_id = Column(
+        String(36),
+        ForeignKey("mentors.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title = Column(String(255), nullable=False)
-    domain = Column(String(255), nullable=True)  # e.g., Cloud, AI, Web Development
+    domain = Column(String(255), nullable=True)
     description = Column(Text, nullable=True)
     location = Column(String(255), nullable=True)
-    mode = Column(String(50), default="Hybrid", nullable=False)  # Online, Offline, Hybrid
-    status = Column(String(50), default="Open", nullable=False)  # Open, Active, Closed, Completed
+    mode = Column(String(50), default="Hybrid", nullable=False)
+    status = Column(String(50), default="Open", nullable=False)
     stipend = Column(String(100), nullable=True)
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     company = relationship("Company", back_populates="internships")
     mentor = relationship("Mentor", back_populates="internships")
-    internship_skills = relationship("InternshipSkill", back_populates="internship", cascade="all, delete-orphan")
-    applications = relationship("Application", back_populates="internship", cascade="all, delete-orphan")
-    progress_reports = relationship("ProgressReport", back_populates="internship", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="internship", cascade="all, delete-orphan")
-    evaluations = relationship("Evaluation", back_populates="internship", cascade="all, delete-orphan")
-    alerts = relationship("Alert", back_populates="internship", cascade="all, delete-orphan")
+    internship_skills = relationship(
+        "InternshipSkill",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
+    applications = relationship(
+        "Application",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
+    progress_reports = relationship(
+        "ProgressReport",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
+    tasks = relationship(
+        "Task",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
+    evaluations = relationship(
+        "Evaluation",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
+    alerts = relationship(
+        "Alert",
+        back_populates="internship",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
-        return f"<Internship id={self.id} title={self.title} status={self.status}>"
+        return (
+            f"<Internship id={self.id} title={self.title} "
+            f"status={self.status}>"
+        )
 
 
 # ============================================================================
@@ -208,19 +335,35 @@ class Application(Base):
     __tablename__ = "applications"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False)
-    status = Column(String(50), default="Pending", nullable=False)  # Pending, Approved, Rejected, Withdrawn
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status = Column(String(50), default="Pending", nullable=False)
     cover_letter = Column(Text, nullable=True)
     applied_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     student = relationship("Student", back_populates="applications")
     internship = relationship("Internship", back_populates="applications")
 
     def __repr__(self) -> str:
-        return f"<Application id={self.id} student_id={self.student_id} status={self.status}>"
+        return (
+            f"<Application id={self.id} student_id={self.student_id} "
+            f"status={self.status}>"
+        )
 
 
 # ============================================================================
@@ -232,25 +375,48 @@ class ProgressReport(Base):
     __tablename__ = "progress_reports"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     week_number = Column(Integer, nullable=False)
     title = Column(String(255), nullable=True)
     summary = Column(Text, nullable=True)
     hours_logged = Column(Float, default=0.0, nullable=False)
-    status = Column(String(50), default="Pending Submission", nullable=False)  # Pending Submission, Under Review, Approved
+    status = Column(
+        String(50),
+        default="Pending Submission",
+        nullable=False,
+    )
     mentor_feedback = Column(Text, nullable=True)
-    mentor_score = Column(Float, nullable=True)  # e.g., 1.0 to 5.0
+    mentor_score = Column(Float, nullable=True)
     submission_date = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     student = relationship("Student", back_populates="progress_reports")
-    internship = relationship("Internship", back_populates="progress_reports")
+    internship = relationship(
+        "Internship",
+        back_populates="progress_reports",
+    )
 
     def __repr__(self) -> str:
-        return f"<ProgressReport id={self.id} week={self.week_number} status={self.status}>"
+        return (
+            f"<ProgressReport id={self.id} week={self.week_number} "
+            f"status={self.status}>"
+        )
 
 
 # ============================================================================
@@ -262,17 +428,34 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    mentor_id = Column(String(36), ForeignKey("mentors.id", ondelete="SET NULL"), nullable=True)
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    mentor_id = Column(
+        String(36),
+        ForeignKey("mentors.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    category = Column(String(100), nullable=True)  # Architecture, Database, API, Testing, etc.
-    status = Column(String(50), default="Pending", nullable=False)  # Pending, In Progress, Completed
+    category = Column(String(100), nullable=True)
+    status = Column(String(50), default="Pending", nullable=False)
     due_date = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     internship = relationship("Internship", back_populates="tasks")
@@ -287,25 +470,33 @@ class Task(Base):
 # 9. SKILL MODEL
 # ============================================================================
 class Skill(Base):
-    """Master skill dictionary (e.g., Python, PostgreSQL, Docker)."""
+    """Master skill dictionary."""
 
     __tablename__ = "skills"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     name = Column(String(100), unique=True, index=True, nullable=False)
-    category = Column(String(100), nullable=True)  # Programming, Framework, Database, Tool
+    category = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships with association models
-    student_skills = relationship("StudentSkill", back_populates="skill", cascade="all, delete-orphan")
-    internship_skills = relationship("InternshipSkill", back_populates="skill", cascade="all, delete-orphan")
+    student_skills = relationship(
+        "StudentSkill",
+        back_populates="skill",
+        cascade="all, delete-orphan",
+    )
+    internship_skills = relationship(
+        "InternshipSkill",
+        back_populates="skill",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<Skill id={self.id} name={self.name}>"
 
 
 # ============================================================================
-# 10. STUDENT SKILL MODEL (Student ↔ Skill association)
+# 10. STUDENT SKILL MODEL
 # ============================================================================
 class StudentSkill(Base):
     """Association model connecting Student to Skill with proficiency level."""
@@ -313,13 +504,29 @@ class StudentSkill(Base):
     __tablename__ = "student_skills"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    skill_id = Column(String(36), ForeignKey("skills.id", ondelete="CASCADE"), nullable=False)
-    proficiency_level = Column(String(50), default="Beginner", nullable=False)  # Beginner, Intermediate, Advanced
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    skill_id = Column(
+        String(36),
+        ForeignKey("skills.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    proficiency_level = Column(
+        String(50),
+        default="Beginner",
+        nullable=False,
+    )
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("student_id", "skill_id", name="uq_student_skill"),
+        UniqueConstraint(
+            "student_id",
+            "skill_id",
+            name="uq_student_skill",
+        ),
     )
 
     # Relationships
@@ -327,11 +534,14 @@ class StudentSkill(Base):
     skill = relationship("Skill", back_populates="student_skills")
 
     def __repr__(self) -> str:
-        return f"<StudentSkill student_id={self.student_id} skill_id={self.skill_id} level={self.proficiency_level}>"
+        return (
+            f"<StudentSkill student_id={self.student_id} "
+            f"skill_id={self.skill_id} level={self.proficiency_level}>"
+        )
 
 
 # ============================================================================
-# 11. INTERNSHIP SKILL MODEL (Internship ↔ Skill association)
+# 11. INTERNSHIP SKILL MODEL
 # ============================================================================
 class InternshipSkill(Base):
     """Association model connecting Internship to Skill with required level."""
@@ -339,22 +549,47 @@ class InternshipSkill(Base):
     __tablename__ = "internship_skills"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False)
-    skill_id = Column(String(36), ForeignKey("skills.id", ondelete="CASCADE"), nullable=False)
-    required_level = Column(String(50), default="Intermediate", nullable=False)  # Beginner, Intermediate, Advanced
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    skill_id = Column(
+        String(36),
+        ForeignKey("skills.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    required_level = Column(
+        String(50),
+        default="Intermediate",
+        nullable=False,
+    )
     is_mandatory = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
-        UniqueConstraint("internship_id", "skill_id", name="uq_internship_skill"),
+        UniqueConstraint(
+            "internship_id",
+            "skill_id",
+            name="uq_internship_skill",
+        ),
     )
 
     # Relationships
-    internship = relationship("Internship", back_populates="internship_skills")
-    skill = relationship("Skill", back_populates="internship_skills")
+    internship = relationship(
+        "Internship",
+        back_populates="internship_skills",
+    )
+    skill = relationship(
+        "Skill",
+        back_populates="internship_skills",
+    )
 
     def __repr__(self) -> str:
-        return f"<InternshipSkill internship_id={self.internship_id} skill_id={self.skill_id} level={self.required_level}>"
+        return (
+            f"<InternshipSkill internship_id={self.internship_id} "
+            f"skill_id={self.skill_id} level={self.required_level}>"
+        )
 
 
 # ============================================================================
@@ -366,23 +601,50 @@ class Evaluation(Base):
     __tablename__ = "evaluations"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="CASCADE"), nullable=False)
-    mentor_id = Column(String(36), ForeignKey("mentors.id", ondelete="CASCADE"), nullable=False)
-    evaluation_type = Column(String(50), default="Midterm", nullable=False)  # Midterm, Final, Monthly
-    rating = Column(Float, nullable=False)  # Score/rating e.g. 1.0 - 5.0
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    mentor_id = Column(
+        String(36),
+        ForeignKey("mentors.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    evaluation_type = Column(
+        String(50),
+        default="Midterm",
+        nullable=False,
+    )
+    rating = Column(Float, nullable=False)
     comments = Column(Text, nullable=True)
     recommendation = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+    )
 
     # Relationships
     student = relationship("Student", back_populates="evaluations")
-    internship = relationship("Internship", back_populates="evaluations")
+    internship = relationship(
+        "Internship",
+        back_populates="evaluations",
+    )
     mentor = relationship("Mentor", back_populates="evaluations")
 
     def __repr__(self) -> str:
-        return f"<Evaluation id={self.id} type={self.evaluation_type} rating={self.rating}>"
+        return (
+            f"<Evaluation id={self.id} type={self.evaluation_type} "
+            f"rating={self.rating}>"
+        )
 
 
 # ============================================================================
@@ -394,18 +656,36 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    student_id = Column(String(36), ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
-    internship_id = Column(String(36), ForeignKey("internships.id", ondelete="SET NULL"), nullable=True)
+    student_id = Column(
+        String(36),
+        ForeignKey("students.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    internship_id = Column(
+        String(36),
+        ForeignKey("internships.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
-    severity = Column(String(50), default="Info", nullable=False)  # Info, Warning, Critical
+    severity = Column(
+        String(50),
+        default="Info",
+        nullable=False,
+    )
     is_read = Column(Boolean, default=False, nullable=False)
     is_resolved = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
     student = relationship("Student", back_populates="alerts")
-    internship = relationship("Internship", back_populates="alerts")
+    internship = relationship(
+        "Internship",
+        back_populates="alerts",
+    )
 
     def __repr__(self) -> str:
-        return f"<Alert id={self.id} severity={self.severity} title={self.title}>"
+        return (
+            f"<Alert id={self.id} severity={self.severity} "
+            f"title={self.title}>"
+        )

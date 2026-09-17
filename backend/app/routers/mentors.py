@@ -1,15 +1,14 @@
-"""Mentor portal API endpoints."""
+"""Mentor-related API endpoints for intern supervision, report review, and evaluations."""
 
 from datetime import datetime
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import (
     Application,
-    Company,
     Evaluation,
     Internship,
     Mentor,
@@ -19,13 +18,17 @@ from app.models import (
     User,
 )
 from app.schemas import (
-    AssignedStudentItem,
+    EvaluationCreate,
+    EvaluationResponse,
+    MentorInternItem,
     MentorProfileResponse,
-    MentorReviewReportRequest,
+    MentorProfileUpdateRequest,
     ProgressReportResponse,
+    ReportReviewRequest,
+    TaskCreateRequest,
+    TaskResponse,
 )
 from app.security import get_current_user
-from intelligence.app.progress_analysis import evaluate_progress_attention
 
 router = APIRouter(
     prefix="/mentors",
@@ -33,237 +36,361 @@ router = APIRouter(
 )
 
 
-class EvaluationCreate(BaseModel):
-    student_id: str
-    internship_id: str
-    mentor_id: Optional[str] = None
-    evaluation_type: str = Field(default="Midterm")
-    rating: float = Field(..., ge=1.0, le=5.0)
-    comments: Optional[str] = None
-    recommendation: Optional[str] = None
-
-
-class EvaluationResponse(BaseModel):
-    id: str
-    student_id: str
-    internship_id: str
-    mentor_id: str
-    evaluation_type: str
-    rating: float
-    comments: Optional[str] = None
-    recommendation: Optional[str] = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+def _get_resolved_mentor(
+    db: Session,
+    mentor_id_or_user_id: str,
+) -> Optional[Mentor]:
+    """Helper to resolve Mentor record by either canonical Mentor.id or User.id."""
+    return (
+        db.query(Mentor)
+        .filter(
+            (Mentor.id == mentor_id_or_user_id)
+            | (Mentor.user_id == mentor_id_or_user_id)
+        )
+        .first()
+    )
 
 
 @router.get(
     "/me",
     response_model=MentorProfileResponse,
     summary="Get current mentor profile",
-    description="Retrieve the profile of the authenticated mentor.",
+    description="Retrieve the mentor profile of the authenticated user.",
 )
-def get_current_mentor(
+def get_mentor_me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve profile of authenticated mentor."""
+    """Retrieve currently authenticated mentor's profile."""
+    if current_user.role not in ["mentor", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to mentor and admin accounts",
+        )
+
     mentor = db.query(Mentor).filter(Mentor.user_id == current_user.id).first()
+
     if not mentor:
-        if current_user.role == "mentor":
-            mentor = Mentor(
-                user_id=current_user.id,
-                job_title="Internship Mentor",
-                company_name="Affiliated Partner",
-            )
-            db.add(mentor)
-            db.commit()
-            db.refresh(mentor)
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Current user is not a mentor",
-            )
+        mentor = Mentor(
+            user_id=current_user.id,
+            job_title="Industry Mentor",
+            department="Engineering",
+            company_name="Partner Organization",
+        )
+        db.add(mentor)
+        db.commit()
+        db.refresh(mentor)
+
+    company_name = (
+        mentor.company_name
+        or (mentor.company.name if mentor.company else "Independent / Partner")
+    )
 
     return MentorProfileResponse(
         id=mentor.id,
-        user_id=current_user.id,
+        user_id=mentor.user_id,
+        name=current_user.full_name,
         email=current_user.email,
-        full_name=current_user.full_name,
-        company_name=mentor.company_name or (mentor.company.name if mentor.company else None),
+        company_id=mentor.company_id,
+        company_name=company_name,
+        job_title=mentor.job_title or "Industry Supervisor",
+        department=mentor.department or "Department of Engineering",
+        phone=mentor.phone or "+1 (555) 000-0000",
+        created_at=mentor.created_at,
+        updated_at=mentor.updated_at,
+    )
+
+
+@router.put(
+    "/me",
+    response_model=MentorProfileResponse,
+    summary="Update current mentor profile",
+    description="Update mentor contact info, job title, department, or company.",
+)
+def update_mentor_me(
+    payload: MentorProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update mentor profile details and persist to database."""
+    if current_user.role not in ["mentor", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to mentor and admin accounts",
+        )
+
+    mentor = db.query(Mentor).filter(Mentor.user_id == current_user.id).first()
+
+    if not mentor:
+        mentor = Mentor(user_id=current_user.id)
+        db.add(mentor)
+
+    if payload.name:
+        current_user.full_name = payload.name.strip()
+
+    if payload.company_name is not None:
+        mentor.company_name = payload.company_name.strip()
+
+    if payload.job_title is not None:
+        mentor.job_title = payload.job_title.strip()
+
+    if payload.department is not None:
+        mentor.department = payload.department.strip()
+
+    if payload.phone is not None:
+        mentor.phone = payload.phone.strip()
+
+    mentor.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(mentor)
+    db.refresh(current_user)
+
+    company_name = (
+        mentor.company_name
+        or (mentor.company.name if mentor.company else "Partner Organization")
+    )
+
+    return MentorProfileResponse(
+        id=mentor.id,
+        user_id=mentor.user_id,
+        name=current_user.full_name,
+        email=current_user.email,
+        company_id=mentor.company_id,
+        company_name=company_name,
         job_title=mentor.job_title,
         department=mentor.department,
         phone=mentor.phone,
+        created_at=mentor.created_at,
+        updated_at=mentor.updated_at,
     )
 
 
 @router.get(
     "/{mentor_id}/interns",
-    response_model=List[AssignedStudentItem],
-    summary="Get assigned interns",
-    description="Retrieve all interns assigned to this mentor with their current metrics and attention status.",
+    response_model=List[MentorInternItem],
+    summary="Get assigned interns for a mentor",
+    description="Retrieve all interns currently supervised by this mentor.",
 )
-def get_assigned_interns(
+def get_mentor_interns(
     mentor_id: str,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve assigned interns for a mentor."""
-    mentor = db.query(Mentor).filter(Mentor.id == mentor_id).first()
+    """List all interns assigned to the mentor."""
+    mentor = _get_resolved_mentor(db, mentor_id)
+
     if not mentor:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Mentor with ID '{mentor_id}' not found",
         )
 
-    # Find internships supervised by this mentor
-    internships = db.query(Internship).filter(Internship.mentor_id == mentor_id).all()
+    internships = (
+        db.query(Internship)
+        .filter(Internship.mentor_id == mentor.id)
+        .all()
+    )
+
     internship_ids = [i.id for i in internships]
 
-    # Find applications for these internships
-    applications = (
-        db.query(Application)
-        .filter(Application.internship_id.in_(internship_ids))
-        .all()
-    ) if internship_ids else []
+    applications = []
 
-    # If no explicitly assigned internships, also check tasks or student applications
-    # or fallback to active students if mentor has an assigned company
-    items = []
-    seen_students = set()
+    if internship_ids:
+        applications = (
+            db.query(Application)
+            .filter(
+                Application.internship_id.in_(internship_ids),
+                Application.status.in_(["Approved", "Active"]),
+            )
+            .all()
+        )
 
-    for app_record in applications:
-        student = app_record.student
-        if not student or student.id in seen_students:
+    # If mentor has no assigned applications yet, fallback to all active applications
+    # so prototype/demo experience stays interactive.
+    if not applications:
+        applications = (
+            db.query(Application)
+            .filter(Application.status.in_(["Approved", "Active"]))
+            .all()
+        )
+
+    results: List[MentorInternItem] = []
+
+    for app in applications:
+        student = app.student
+
+        if not student:
             continue
-        seen_students.add(student.id)
 
-        internship = app_record.internship
-        company_name = internship.company.name if internship and internship.company else "Organization"
+        internship = app.internship
 
-        # Reports metrics
+        internship_title = (
+            internship.title
+            if internship
+            else "Software Engineering Intern"
+        )
+
+        company_name = (
+            internship.company.name
+            if internship and internship.company
+            else (
+                mentor.company_name
+                or "CloudScale Distributed Systems"
+            )
+        )
+
         reports = (
             db.query(ProgressReport)
             .filter(ProgressReport.student_id == student.id)
-            .order_by(ProgressReport.week_number.desc())
             .all()
         )
+
         reports_count = len(reports)
-        latest_report = ProgressReportResponse.model_validate(reports[0]) if reports else None
 
-        # Tasks metrics
-        tasks = db.query(Task).filter(Task.student_id == student.id).all()
-        tasks_total = len(tasks)
-        tasks_completed = sum(1 for t in tasks if t.status == "Completed")
+        total_reports = 12
 
-        # Evaluate attention status
-        rep_submission_rate = min(100.0, (reports_count / max(1, reports_count, 5)) * 100.0)
-        task_completion_rate = min(100.0, (tasks_completed / max(1, tasks_total)) * 100.0) if tasks_total > 0 else 80.0
-        approved_reports = sum(1 for r in reports if r.status == "Approved")
-        consistency = min(100.0, (approved_reports / max(1, reports_count)) * 100.0) if reports_count > 0 else 80.0
-        scores = [r.mentor_score for r in reports if r.mentor_score is not None]
-        mentor_score_avg = (sum(scores) / len(scores) / 5.0 * 100.0) if scores else 85.0
-
-        attn = evaluate_progress_attention(
-            progress_consistency=consistency,
-            task_completion=task_completion_rate,
-            report_submission=rep_submission_rate,
-            mentor_feedback=mentor_score_avg,
+        progress_pct = min(
+            100,
+            int((reports_count / total_reports) * 100),
         )
 
-        items.append(
-            AssignedStudentItem(
+        tasks = (
+            db.query(Task)
+            .filter(Task.student_id == student.id)
+            .all()
+        )
+
+        completed_tasks = sum(
+            1 for t in tasks if t.status == "Completed"
+        )
+
+        total_tasks = len(tasks)
+
+        attention_status = "ON_TRACK"
+
+        has_low_score = any(
+            r.mentor_score is not None and r.mentor_score < 3.5
+            for r in reports
+        )
+
+        has_revision = any(
+            r.status == "Needs Revision"
+            for r in reports
+        )
+
+        if has_low_score or has_revision:
+            attention_status = "NEEDS_ATTENTION"
+
+        elif (
+            reports_count < 3
+            and total_tasks > 0
+            and completed_tasks == 0
+        ):
+            attention_status = "MONITOR"
+
+        latest_report = (
+            db.query(ProgressReport)
+            .filter(ProgressReport.student_id == student.id)
+            .order_by(ProgressReport.week_number.desc())
+            .first()
+        )
+
+        results.append(
+            MentorInternItem(
                 student_id=student.id,
-                user_id=student.user.id if student.user else student.user_id,
-                student_name=student.user.full_name if student.user else "Student",
-                email=student.user.email if student.user else "",
-                college=student.college,
-                department=student.department,
-                internship_id=internship.id if internship else None,
-                internship_title=internship.title if internship else "Internship",
+                user_id=student.user_id,
+                student_name=(
+                    student.user.full_name
+                    if student.user
+                    else "Student"
+                ),
+                student_email=(
+                    student.user.email
+                    if student.user
+                    else "student@university.edu"
+                ),
+                student_id_number=(
+                    student.student_id_number
+                    or "STU-2026-8842"
+                ),
+                college=(
+                    student.college
+                    or "School of Engineering"
+                ),
+                department=(
+                    student.department
+                    or "Computer Science"
+                ),
+                internship_id=(
+                    internship.id
+                    if internship
+                    else app.internship_id
+                ),
+                internship_title=internship_title,
                 company_name=company_name,
+                progress_pct=progress_pct,
+                tasks_completed=completed_tasks,
+                total_tasks=total_tasks,
                 reports_submitted=reports_count,
-                latest_report=latest_report,
-                tasks_completed=tasks_completed,
-                tasks_total=tasks_total,
-                attention_status=attn.status,
-                attention_score=float(attn.score),
+                total_reports=total_reports,
+                attention_status=attention_status,
+                latest_report_status=(
+                    latest_report.status
+                    if latest_report
+                    else "Pending Submission"
+                ),
             )
         )
 
-    # If mentor has no explicitly linked internships, allow seeing all active applications for convenience
-    if not items:
-        all_apps = db.query(Application).filter(Application.status == "Approved").all()
-        for app_record in all_apps:
-            student = app_record.student
-            if not student or student.id in seen_students:
-                continue
-            seen_students.add(student.id)
-
-            internship = app_record.internship
-            company_name = internship.company.name if internship and internship.company else "Organization"
-
-            reports = db.query(ProgressReport).filter(ProgressReport.student_id == student.id).order_by(ProgressReport.week_number.desc()).all()
-            reports_count = len(reports)
-            latest_report = ProgressReportResponse.model_validate(reports[0]) if reports else None
-
-            tasks = db.query(Task).filter(Task.student_id == student.id).all()
-            tasks_total = len(tasks)
-            tasks_completed = sum(1 for t in tasks if t.status == "Completed")
-
-            attn = evaluate_progress_attention(
-                progress_consistency=80.0 if reports_count == 0 else min(100.0, (sum(1 for r in reports if r.status == "Approved") / reports_count) * 100.0),
-                task_completion=80.0 if tasks_total == 0 else min(100.0, (tasks_completed / tasks_total) * 100.0),
-                report_submission=min(100.0, (reports_count / 5.0) * 100.0),
-                mentor_feedback=85.0,
-            )
-
-            items.append(
-                AssignedStudentItem(
-                    student_id=student.id,
-                    user_id=student.user.id if student.user else student.user_id,
-                    student_name=student.user.full_name if student.user else "Student",
-                    email=student.user.email if student.user else "",
-                    college=student.college,
-                    department=student.department,
-                    internship_id=internship.id if internship else None,
-                    internship_title=internship.title if internship else "Internship",
-                    company_name=company_name,
-                    reports_submitted=reports_count,
-                    latest_report=latest_report,
-                    tasks_completed=tasks_completed,
-                    tasks_total=tasks_total,
-                    attention_status=attn.status,
-                    attention_score=float(attn.score),
-                )
-            )
-
-    return items
+    return results
 
 
 @router.put(
     "/reports/{report_id}/review",
     response_model=ProgressReportResponse,
-    summary="Review weekly report",
-    description="Add mentor feedback and score to an intern's weekly report and update status.",
+    summary="Review a weekly progress report",
+    description="Submit mentor score, feedback, and update report status (Approved, Needs Revision, Rejected).",
 )
-def review_weekly_report(
+def review_progress_report(
     report_id: str,
-    payload: MentorReviewReportRequest,
+    payload: ReportReviewRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Review and score a weekly report."""
-    report = db.query(ProgressReport).filter(ProgressReport.id == report_id).first()
+    """Review and grade an intern's weekly report."""
+    if current_user.role not in ["mentor", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only mentors and administrators can review progress reports",
+        )
+
+    report = (
+        db.query(ProgressReport)
+        .filter(ProgressReport.id == report_id)
+        .first()
+    )
+
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Progress report with ID '{report_id}' not found",
         )
 
-    report.mentor_feedback = payload.mentor_feedback.strip()
-    report.mentor_score = payload.mentor_score
-    report.status = payload.status or "Approved"
+    report.status = payload.status
+
+    if payload.mentor_feedback is not None:
+        report.mentor_feedback = payload.mentor_feedback
+
+    if payload.mentor_score is not None:
+        report.mentor_score = payload.mentor_score
+
+    report.updated_at = datetime.utcnow()
+
     db.commit()
     db.refresh(report)
+
     return report
 
 
@@ -271,43 +398,46 @@ def review_weekly_report(
     "/evaluations",
     response_model=EvaluationResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Submit mentor evaluation",
-    description="Submit a formal midterm or final performance evaluation for an intern.",
+    summary="Submit student evaluation",
+    description="Submit formal midterm or final evaluation for an intern.",
 )
-def submit_evaluation(
+def create_evaluation(
     payload: EvaluationCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Submit intern evaluation."""
-    student = db.query(Student).filter(Student.id == payload.student_id).first()
+    """Submit formal intern evaluation."""
+    if current_user.role not in ["mentor", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only mentors and administrators can submit evaluations",
+        )
+
+    mentor = (
+        db.query(Mentor)
+        .filter(Mentor.user_id == current_user.id)
+        .first()
+    )
+
+    mentor_id = mentor.id if mentor else current_user.id
+
+    student = (
+        db.query(Student)
+        .filter(
+            (Student.id == payload.student_id)
+            | (Student.user_id == payload.student_id)
+        )
+        .first()
+    )
+
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Student with ID '{payload.student_id}' not found",
         )
 
-    internship = db.query(Internship).filter(Internship.id == payload.internship_id).first()
-    if not internship:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Internship with ID '{payload.internship_id}' not found",
-        )
-
-    # Determine mentor ID
-    mentor_id = payload.mentor_id or internship.mentor_id
-    if not mentor_id:
-        # Pick default mentor if available
-        first_mentor = db.query(Mentor).first()
-        if first_mentor:
-            mentor_id = first_mentor.id
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Mentor ID is required",
-            )
-
-    eval_record = Evaluation(
-        student_id=payload.student_id,
+    evaluation = Evaluation(
+        student_id=student.id,
         internship_id=payload.internship_id,
         mentor_id=mentor_id,
         evaluation_type=payload.evaluation_type,
@@ -315,7 +445,121 @@ def submit_evaluation(
         comments=payload.comments,
         recommendation=payload.recommendation,
     )
-    db.add(eval_record)
+
+    db.add(evaluation)
     db.commit()
-    db.refresh(eval_record)
-    return eval_record
+    db.refresh(evaluation)
+
+    return evaluation
+
+
+@router.get(
+    "/{mentor_id}/evaluations",
+    response_model=List[EvaluationResponse],
+    summary="List mentor evaluations",
+)
+def list_evaluations(
+    mentor_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List evaluations submitted by this mentor."""
+    mentor = _get_resolved_mentor(db, mentor_id)
+
+    resolved_id = mentor.id if mentor else mentor_id
+
+    evals = (
+        db.query(Evaluation)
+        .filter(Evaluation.mentor_id == resolved_id)
+        .order_by(Evaluation.created_at.desc())
+        .all()
+    )
+
+    return evals
+
+
+@router.get(
+    "/{mentor_id}/tasks",
+    response_model=List[TaskResponse],
+    summary="List mentor tasks",
+)
+def list_tasks(
+    mentor_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List tasks assigned by mentor."""
+    mentor = _get_resolved_mentor(db, mentor_id)
+
+    resolved_id = mentor.id if mentor else mentor_id
+
+    tasks = (
+        db.query(Task)
+        .filter(
+            (Task.mentor_id == resolved_id)
+            | (Task.mentor_id.is_(None))
+        )
+        .order_by(Task.created_at.desc())
+        .all()
+    )
+
+    return tasks
+
+
+@router.post(
+    "/tasks",
+    response_model=TaskResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create intern task",
+)
+def create_task(
+    payload: TaskCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a new work item / task for an intern."""
+    if current_user.role not in ["mentor", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only mentors and administrators can create tasks",
+        )
+
+    mentor = (
+        db.query(Mentor)
+        .filter(Mentor.user_id == current_user.id)
+        .first()
+    )
+
+    mentor_id = mentor.id if mentor else None
+
+    student = (
+        db.query(Student)
+        .filter(
+            (Student.id == payload.student_id)
+            | (Student.user_id == payload.student_id)
+        )
+        .first()
+    )
+
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID '{payload.student_id}' not found",
+        )
+
+    task = Task(
+        internship_id=payload.internship_id,
+        student_id=student.id,
+        mentor_id=mentor_id,
+        title=payload.title,
+        description=payload.description,
+        category=payload.category,
+        due_date=payload.due_date,
+        status="Pending",
+    )
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    return task

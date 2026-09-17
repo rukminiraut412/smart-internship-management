@@ -18,6 +18,7 @@ interface WeeklyReportViewProps {
   internshipId?: string;
   studentId?: string;
   onBackToProgress?: () => void;
+  onReportSubmitted?: () => void;
 }
 
 export function WeeklyReportView({
@@ -26,14 +27,16 @@ export function WeeklyReportView({
   internshipId,
   studentId,
   onBackToProgress,
+  onReportSubmitted,
 }: WeeklyReportViewProps) {
-  const [reports, setReports] = useState<WeeklyReport[]>(initialReports);
+  const [reports, setReports] =
+    useState<WeeklyReport[]>(initialReports);
+
   const [prevInitialReports, setPrevInitialReports] =
     useState<WeeklyReport[]>(initialReports);
 
-  const [activeSubTab, setActiveSubTab] = useState<"form" | "history">(
-    "form"
-  );
+  const [activeSubTab, setActiveSubTab] =
+    useState<"form" | "history">("form");
 
   // Keep local report state synced with updated backend/parent data
   if (initialReports !== prevInitialReports) {
@@ -41,8 +44,21 @@ export function WeeklyReportView({
     setReports(initialReports);
   }
 
-  const handleReportSubmitted = (newReport: WeeklyReport) => {
-    setReports((currentReports) => [newReport, ...currentReports]);
+  const handleReportSubmitted = (
+    newReport: WeeklyReport
+  ) => {
+    // Prepend newly submitted report to history
+    setReports((currentReports) => [
+      newReport,
+      ...currentReports,
+    ]);
+
+    // Refresh parent/backend data
+    if (onReportSubmitted) {
+      onReportSubmitted();
+    }
+
+    // Show the newly submitted report in history
     setActiveSubTab("history");
   };
 
@@ -58,9 +74,12 @@ export function WeeklyReportView({
 
   return (
     <div className="space-y-5">
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+
         <div className="flex items-center gap-3">
+
           {onBackToProgress && (
             <button
               type="button"
@@ -75,6 +94,7 @@ export function WeeklyReportView({
             <h2 className="text-sm font-bold text-slate-900">
               Weekly Reports
             </h2>
+
             <p className="text-xs text-slate-500 mt-0.5">
               Submit your weekly internship progress and track review status.
             </p>
@@ -83,6 +103,7 @@ export function WeeklyReportView({
 
         {/* Sub Tabs */}
         <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+
           <button
             type="button"
             onClick={() => setActiveSubTab("form")}
@@ -106,17 +127,22 @@ export function WeeklyReportView({
             }`}
           >
             <ClockIcon className="w-3.5 h-3.5" />
-            <span>History ({reports.length})</span>
+            <span>
+              History ({reports.length})
+            </span>
           </button>
+
         </div>
       </div>
 
       {/* Compact Status Summary */}
       <div className="flex flex-wrap items-center gap-2">
+
         <div className="px-3 py-2 rounded-lg bg-white border border-slate-200">
           <span className="text-[11px] text-slate-500">
             Current Week
           </span>
+
           <span className="ml-1.5 text-xs font-bold text-slate-900">
             Week {initialWeek}
           </span>
@@ -126,6 +152,7 @@ export function WeeklyReportView({
           <span className="text-[11px] text-slate-500">
             Total Reports
           </span>
+
           <span className="ml-1.5 text-xs font-bold text-slate-900">
             {reports.length}
           </span>
@@ -135,6 +162,7 @@ export function WeeklyReportView({
           <span className="text-[11px] text-slate-500">
             Awaiting Review
           </span>
+
           <span className="ml-1.5 text-xs font-bold text-amber-600">
             {pendingCount}
           </span>
@@ -144,15 +172,19 @@ export function WeeklyReportView({
           <span className="text-[11px] text-slate-500">
             Reviewed
           </span>
+
           <span className="ml-1.5 text-xs font-bold text-emerald-600">
             {reviewedCount}
           </span>
         </div>
+
       </div>
 
       {/* Main Content */}
       {activeSubTab === "form" ? (
+
         <div className="space-y-5">
+
           {/* Weekly Report Form */}
           <WeeklyReportForm
             initialWeek={initialWeek}
@@ -163,11 +195,14 @@ export function WeeklyReportView({
 
           {/* Previous Reports */}
           <div>
+
             <div className="flex items-center justify-between mb-3">
+
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
                   Report History
                 </h3>
+
                 <p className="text-xs text-slate-500 mt-0.5">
                   Previous weekly submissions and their review status.
                 </p>
@@ -176,32 +211,48 @@ export function WeeklyReportView({
               {reports.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setActiveSubTab("history")}
+                  onClick={() =>
+                    setActiveSubTab("history")
+                  }
                   className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                 >
                   View all →
                 </button>
               )}
+
             </div>
 
-            <ReportHistoryList reports={reports} />
+            <ReportHistoryList
+              reports={reports}
+            />
+
           </div>
         </div>
+
       ) : (
+
         /* Full History */
         <div>
+
           <div className="mb-3">
+
             <h3 className="text-sm font-bold text-slate-900">
               All Weekly Reports
             </h3>
+
             <p className="text-xs text-slate-500 mt-0.5">
               Track submitted reports and review progress.
             </p>
+
           </div>
 
-          <ReportHistoryList reports={reports} />
+          <ReportHistoryList
+            reports={reports}
+          />
+
         </div>
       )}
+
     </div>
   );
 }

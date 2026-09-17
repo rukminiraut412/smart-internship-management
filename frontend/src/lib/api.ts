@@ -7,9 +7,12 @@
  * Handles:
  * - Authentication
  * - Student internship registration
+ * - Student profile
  * - Internship data
  * - Weekly progress reports
  * - Intelligence APIs
+ * - Mentor APIs
+ * - Admin APIs
  * - Backend health check
  */
 
@@ -113,10 +116,7 @@ async function apiRequest<T>(
       try {
         errorData = await response.json();
 
-        if (
-          errorData &&
-          typeof errorData === "object"
-        ) {
+        if (errorData && typeof errorData === "object") {
           const dict = errorData as Record<string, unknown>;
 
           if (dict.detail) {
@@ -134,8 +134,7 @@ async function apiRequest<T>(
         authStorage.removeToken();
 
         throw new ApiError(
-          errorMessage ||
-            "Session expired. Please log in again.",
+          errorMessage || "Session expired. Please log in again.",
           401,
           errorData
         );
@@ -151,8 +150,7 @@ async function apiRequest<T>(
 
       if (response.status === 404) {
         throw new ApiError(
-          errorMessage ||
-            "Requested resource not found.",
+          errorMessage || "Requested resource not found.",
           404,
           errorData
         );
@@ -160,8 +158,7 @@ async function apiRequest<T>(
 
       if (response.status === 422) {
         throw new ApiError(
-          errorMessage ||
-            "Validation error in request payload.",
+          errorMessage || "Validation error in request payload.",
           422,
           errorData
         );
@@ -169,8 +166,7 @@ async function apiRequest<T>(
 
       if (response.status >= 500) {
         throw new ApiError(
-          errorMessage ||
-            "Internal server error. Please try again.",
+          errorMessage || "Internal server error. Please try again.",
           response.status,
           errorData
         );
@@ -207,6 +203,10 @@ export interface UserProfile {
   email: string;
   full_name: string;
   role: string;
+
+  student_id?: string;
+  mentor_id?: string;
+
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -238,20 +238,16 @@ export const authApi = {
     email: string;
     password: string;
   }): Promise<AuthResponse> => {
-    const res =
-      await apiRequest<AuthResponse>(
-        "/api/auth/login",
-        {
-          method: "POST",
-          body: JSON.stringify(payload),
-        }
-      );
+    const res = await apiRequest<AuthResponse>(
+      "/api/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
 
     if (res.access_token) {
-      authStorage.setToken(
-        res.access_token
-      );
-
+      authStorage.setToken(res.access_token);
       authStorage.setUser(res.user);
     }
 
@@ -259,10 +255,9 @@ export const authApi = {
   },
 
   getMe: async (): Promise<UserProfile> => {
-    const user =
-      await apiRequest<UserProfile>(
-        "/api/auth/me"
-      );
+    const user = await apiRequest<UserProfile>(
+      "/api/auth/me"
+    );
 
     authStorage.setUser(user);
 
@@ -346,17 +341,11 @@ export const internshipsApi = {
     const query = new URLSearchParams();
 
     if (params?.domain) {
-      query.append(
-        "domain",
-        params.domain
-      );
+      query.append("domain", params.domain);
     }
 
     if (params?.status) {
-      query.append(
-        "status",
-        params.status
-      );
+      query.append("status", params.status);
     }
 
     const qs = query.toString()
@@ -403,14 +392,10 @@ export const internshipsApi = {
     studentId?: string
   ): Promise<BackendProgressReport[]> => {
     const qs = studentId
-      ? `?student_id=${encodeURIComponent(
-          studentId
-        )}`
+      ? `?student_id=${encodeURIComponent(studentId)}`
       : "";
 
-    return apiRequest<
-      BackendProgressReport[]
-    >(
+    return apiRequest<BackendProgressReport[]>(
       `/api/internships/${internshipId}/reports${qs}`
     );
   },
@@ -440,34 +425,110 @@ export const internshipsApi = {
 };
 
 // ============================================================================
-// 3. STUDENTS API
+// 3. STUDENT API
 // ============================================================================
 
-export interface InternshipRegistrationRequest {
+export interface StudentInternshipRegisterPayload {
   company_name: string;
   internship_title: string;
 
   domain?: string;
-  description?: string;
-  location?: string;
-
-  mode: string;
-
   start_date?: string;
   end_date?: string;
 
-  required_skills: string[];
+  mode?: "Online" | "Offline" | "Hybrid";
+
+  location?: string;
+
+  required_skills?: string[];
+
+  description?: string;
 
   mentor_name?: string;
   mentor_email?: string;
   mentor_phone?: string;
 
+  stipend?: string;
+
   cover_letter?: string;
+}
+
+export interface BackendStudentProfile {
+  id: string;
+  user_id: string;
+
+  name: string;
+  email: string;
+
+  student_id_number?: string;
+
+  phone?: string;
+
+  college?: string;
+  university?: string;
+
+  department?: string;
+  year_of_study?: string;
+
+  gpa?: number;
+
+  resume_url?: string;
+
+  skills: string[];
+
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface StudentProfileUpdatePayload {
+  name?: string;
+  phone?: string;
+
+  college?: string;
+  university?: string;
+
+  department?: string;
+  year_of_study?: string;
+
+  gpa?: number;
+
+  resume_url?: string;
+
+  skills?: string[];
 }
 
 export const studentsApi = {
   // --------------------------------------------------------------------------
-  // Get all internships registered/applied by a student
+  // Get student profile
+  // --------------------------------------------------------------------------
+
+  getProfile: async (
+    studentId: string
+  ): Promise<BackendStudentProfile> => {
+    return apiRequest<BackendStudentProfile>(
+      `/api/students/${studentId}`
+    );
+  },
+
+  // --------------------------------------------------------------------------
+  // Update student profile
+  // --------------------------------------------------------------------------
+
+  updateProfile: async (
+    studentId: string,
+    payload: StudentProfileUpdatePayload
+  ): Promise<BackendStudentProfile> => {
+    return apiRequest<BackendStudentProfile>(
+      `/api/students/${studentId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------------------
+  // Get all internships registered/applied by student
   // --------------------------------------------------------------------------
 
   getInternships: async (
@@ -479,18 +540,18 @@ export const studentsApi = {
   },
 
   // --------------------------------------------------------------------------
-  // Register a new internship
+  // Register new internship
   // --------------------------------------------------------------------------
 
   registerInternship: async (
     studentId: string,
-    data: InternshipRegistrationRequest
-  ): Promise<StudentInternshipItem> => {
-    return apiRequest<StudentInternshipItem>(
+    payload: StudentInternshipRegisterPayload
+  ): Promise<BackendInternship> => {
+    return apiRequest<BackendInternship>(
       `/api/students/${studentId}/register-internship`,
       {
         method: "POST",
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }
     );
   },
@@ -535,10 +596,8 @@ export const intelligenceApi = {
       {
         method: "POST",
         body: JSON.stringify({
-          student_skills:
-            studentSkills,
-          required_skills:
-            requiredSkills,
+          student_skills: studentSkills,
+          required_skills: requiredSkills,
         }),
       }
     );
@@ -553,9 +612,7 @@ export const intelligenceApi = {
     studentId?: string
   ): Promise<SkillGapResult> => {
     const qs = studentId
-      ? `?student_id=${encodeURIComponent(
-          studentId
-        )}`
+      ? `?student_id=${encodeURIComponent(studentId)}`
       : "";
 
     return apiRequest<SkillGapResult>(
@@ -612,5 +669,380 @@ export const healthApi = {
       message: string;
       environment?: string;
     }>("/api/health");
+  },
+};
+
+// ============================================================================
+// 6. MENTORS API
+// ============================================================================
+
+export interface MentorProfile {
+  id: string;
+  user_id: string;
+
+  name: string;
+  email: string;
+
+  company_id?: string;
+  company_name?: string;
+
+  job_title?: string;
+  department?: string;
+
+  phone?: string;
+
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface MentorInternItem {
+  student_id: string;
+  user_id: string;
+
+  student_name: string;
+  student_email: string;
+
+  student_id_number?: string;
+
+  college?: string;
+  department?: string;
+
+  internship_id: string;
+  internship_title: string;
+
+  company_name?: string;
+
+  progress_pct: number;
+
+  tasks_completed: number;
+  total_tasks: number;
+
+  reports_submitted: number;
+  total_reports: number;
+
+  attention_status: string;
+
+  latest_report_status?: string;
+}
+
+export interface EvaluationItem {
+  id: string;
+
+  student_id: string;
+  internship_id: string;
+  mentor_id: string;
+
+  evaluation_type: string;
+
+  rating: number;
+
+  comments?: string;
+  recommendation?: string;
+
+  created_at: string;
+}
+
+export interface TaskItem {
+  id: string;
+
+  internship_id: string;
+  student_id: string;
+
+  mentor_id?: string;
+
+  title: string;
+  description?: string;
+
+  category?: string;
+
+  status: string;
+
+  due_date?: string;
+  completed_at?: string;
+
+  created_at: string;
+}
+
+export const mentorsApi = {
+  getMe: async (): Promise<MentorProfile> => {
+    return apiRequest<MentorProfile>(
+      "/api/mentors/me"
+    );
+  },
+
+  updateProfile: async (payload: {
+    name?: string;
+    company_name?: string;
+    job_title?: string;
+    department?: string;
+    phone?: string;
+  }): Promise<MentorProfile> => {
+    return apiRequest<MentorProfile>(
+      "/api/mentors/me",
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  getInterns: async (
+    mentorId: string
+  ): Promise<MentorInternItem[]> => {
+    return apiRequest<MentorInternItem[]>(
+      `/api/mentors/${mentorId}/interns`
+    );
+  },
+
+  reviewReport: async (
+    reportId: string,
+    payload: {
+      status: string;
+      mentor_feedback?: string;
+      mentor_score?: number;
+    }
+  ): Promise<BackendProgressReport> => {
+    return apiRequest<BackendProgressReport>(
+      `/api/mentors/reports/${reportId}/review`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  createEvaluation: async (payload: {
+    student_id: string;
+    internship_id: string;
+    evaluation_type: string;
+    rating: number;
+    comments?: string;
+    recommendation?: string;
+  }): Promise<EvaluationItem> => {
+    return apiRequest<EvaluationItem>(
+      "/api/mentors/evaluations",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+
+  getEvaluations: async (
+    mentorId: string
+  ): Promise<EvaluationItem[]> => {
+    return apiRequest<EvaluationItem[]>(
+      `/api/mentors/${mentorId}/evaluations`
+    );
+  },
+
+  getTasks: async (
+    mentorId: string
+  ): Promise<TaskItem[]> => {
+    return apiRequest<TaskItem[]>(
+      `/api/mentors/${mentorId}/tasks`
+    );
+  },
+
+  createTask: async (payload: {
+    internship_id: string;
+    student_id: string;
+    title: string;
+    description?: string;
+    category?: string;
+    due_date?: string;
+  }): Promise<TaskItem> => {
+    return apiRequest<TaskItem>(
+      "/api/mentors/tasks",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    );
+  },
+};
+
+// ============================================================================
+// 7. ADMIN API
+// ============================================================================
+
+export interface AdminStats {
+  total_students: number;
+  active_internships: number;
+  total_companies: number;
+  total_mentors: number;
+
+  pending_applications: number;
+  reports_pending_review: number;
+  students_needing_attention: number;
+  completed_internships: number;
+}
+
+export interface AdminApplicationItem {
+  id: string;
+
+  student_id: string;
+  student_name: string;
+  student_email: string;
+
+  student_id_number?: string;
+
+  internship_id: string;
+  internship_title: string;
+
+  company_name?: string;
+
+  status: string;
+  applied_at: string;
+}
+
+export interface AdminMentorItem {
+  id: string;
+  user_id: string;
+
+  name: string;
+  email: string;
+
+  company_name?: string;
+  job_title?: string;
+  department?: string;
+  phone?: string;
+
+  assigned_interns_count: number;
+  active_internships_count: number;
+}
+
+export interface AdminStudentItem {
+  id: string;
+  user_id: string;
+
+  name: string;
+  email: string;
+
+  student_id_number?: string;
+
+  college?: string;
+  department?: string;
+  year_of_study?: string;
+
+  gpa?: number;
+
+  active_internship_title?: string;
+
+  status: string;
+}
+
+export interface AdminInternshipItem {
+  id: string;
+
+  title: string;
+
+  company_name?: string;
+  mentor_name?: string;
+
+  domain?: string;
+
+  mode: string;
+  status: string;
+
+  stipend?: string;
+
+  applicant_count: number;
+}
+
+export interface AdminReportAlertItem {
+  id: string;
+
+  type: string;
+  title: string;
+
+  student_name: string;
+
+  internship_title?: string;
+
+  status: string;
+  severity: string;
+
+  date: string;
+}
+
+export const adminApi = {
+  getStats: async (): Promise<AdminStats> => {
+    return apiRequest<AdminStats>(
+      "/api/admin/stats"
+    );
+  },
+
+  getApplications: async (): Promise<
+    AdminApplicationItem[]
+  > => {
+    return apiRequest<AdminApplicationItem[]>(
+      "/api/admin/applications"
+    );
+  },
+
+  updateApplicationStatus: async (
+    applicationId: string,
+    status:
+      | "Approved"
+      | "Rejected"
+      | "Pending"
+      | string
+  ): Promise<AdminApplicationItem> => {
+    return apiRequest<AdminApplicationItem>(
+      `/api/admin/applications/${applicationId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      }
+    );
+  },
+
+  getMentors: async (): Promise<
+    AdminMentorItem[]
+  > => {
+    return apiRequest<AdminMentorItem[]>(
+      "/api/admin/mentors"
+    );
+  },
+
+  assignMentor: async (payload: {
+    internship_id: string;
+    mentor_id: string;
+  }): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    return apiRequest<{
+      success: boolean;
+      message: string;
+    }>("/api/admin/assign-mentor", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getStudents: async (): Promise<
+    AdminStudentItem[]
+  > => {
+    return apiRequest<AdminStudentItem[]>(
+      "/api/admin/students"
+    );
+  },
+
+  getInternships: async (): Promise<
+    AdminInternshipItem[]
+  > => {
+    return apiRequest<AdminInternshipItem[]>(
+      "/api/admin/internships"
+    );
+  },
+
+  getReportsAndAlerts: async (): Promise<
+    AdminReportAlertItem[]
+  > => {
+    return apiRequest<AdminReportAlertItem[]>(
+      "/api/admin/reports-alerts"
+    );
   },
 };

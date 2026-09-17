@@ -1,7 +1,13 @@
 "use client";
 
-import React from "react";
-import { MenuIcon, UserIcon } from "@/components/common/Icons";
+import React, { useState } from "react";
+import {
+  MenuIcon,
+  BellIcon,
+  SearchIcon,
+  UserIcon,
+  XIcon,
+} from "@/components/common/Icons";
 import { mockStudentData } from "@/data/mockData";
 import { UserProfile } from "@/lib/api";
 
@@ -12,6 +18,7 @@ interface TopNavbarProps {
   backendConnected?: boolean;
   onOpenAuthModal?: () => void;
   onLogout?: () => void;
+  onSearchChange?: (term: string) => void;
 }
 
 export function TopNavbar({
@@ -21,6 +28,7 @@ export function TopNavbar({
   backendConnected = false,
   onOpenAuthModal,
   onLogout,
+  onSearchChange,
 }: TopNavbarProps) {
   const { student } = mockStudentData;
 
@@ -32,6 +40,11 @@ export function TopNavbar({
     ? currentUser.role
     : "Student";
 
+  const [showNotifications, setShowNotifications] =
+    useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
+
   const initials = displayName
     .split(" ")
     .map((name) => name[0])
@@ -39,52 +52,108 @@ export function TopNavbar({
     .toUpperCase()
     .slice(0, 2);
 
+  const notifications = [
+    {
+      id: 1,
+      title: "Weekly Report Reminder",
+      desc: "Week 5 progress report window is open for submission.",
+      time: "2h ago",
+      type: "info",
+    },
+    {
+      id: 2,
+      title: "Mentor Evaluation Submitted",
+      desc: "Dr. Marcus Vance reviewed and approved your Week 4 milestone.",
+      time: "1d ago",
+      type: "success",
+    },
+    {
+      id: 3,
+      title: "Placement Verified",
+      desc: "CloudScale Distributed Systems internship credentials active.",
+      time: "3d ago",
+      type: "success",
+    },
+  ];
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
 
-      {/* ---------------------------------------- */}
       {/* Left: Mobile Menu + Page Title */}
-      {/* ---------------------------------------- */}
-
       <div className="flex min-w-0 items-center gap-3">
 
         {/* Mobile Sidebar Button */}
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 lg:hidden cursor-pointer"
           aria-label="Open sidebar"
         >
           <MenuIcon className="h-5 w-5" />
         </button>
 
-        {/* Breadcrumb */}
-        <div className="flex min-w-0 items-center gap-2">
-
-          <span className="hidden text-xs font-medium text-slate-400 sm:inline">
-            Internship Portal
+        <div className="flex items-center space-x-2">
+          <span className="text-xs font-semibold text-indigo-600 hidden sm:inline uppercase tracking-wider">
+            {displayRole} Portal
           </span>
 
-          <span className="hidden text-xs text-slate-300 sm:inline">
+          <span className="text-xs text-slate-300 hidden sm:inline">
             /
           </span>
 
-          <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
+          <h1 className="text-base sm:text-lg font-bold text-slate-900">
             {activeTabTitle}
           </h1>
-
         </div>
       </div>
 
-      {/* ---------------------------------------- */}
-      {/* Right: Status + User */}
-      {/* ---------------------------------------- */}
+      {/* Center / Search Bar */}
+      <div className="hidden md:flex flex-1 max-w-md mx-6">
+        <div className="relative w-full">
 
-      <div className="flex items-center gap-2 sm:gap-3">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <SearchIcon className="w-4 h-4 text-slate-400" />
+          </div>
 
-        {/* Backend Status */}
-        <div
-          className={`hidden sm:inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+
+              if (onSearchChange) {
+                onSearchChange(e.target.value);
+              }
+            }}
+            placeholder="Search records, weekly logs, or skills..."
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-8 text-xs text-slate-700 placeholder-slate-400 focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500 transition-colors"
+          />
+
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm("");
+
+                if (onSearchChange) {
+                  onSearchChange("");
+                }
+              }}
+              className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              aria-label="Clear search"
+            >
+              <XIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Right: Backend Health, Notifications & User */}
+      <div className="flex items-center space-x-2 sm:space-x-3">
+
+        {/* Backend Connectivity Badge */}
+        <span
+          className={`hidden sm:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
             backendConnected
               ? "border-emerald-100 bg-emerald-50 text-emerald-700"
               : "border-amber-100 bg-amber-50 text-amber-700"
@@ -104,63 +173,119 @@ export function TopNavbar({
           />
 
           {backendConnected ? "Connected" : "Offline"}
-        </div>
+        </span>
 
-        {/* ------------------------------------ */}
-        {/* Logged In User */}
-        {/* ------------------------------------ */}
-
-        {currentUser ? (
-          <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
-
-            {/* Avatar */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
-              {initials}
-            </div>
-
-            {/* Name + Role */}
-            <div className="hidden min-w-0 sm:block">
-
-              <p className="max-w-[130px] truncate text-xs font-semibold text-slate-800">
-                {displayName}
-              </p>
-
-              <p className="mt-0.5 text-[10px] font-medium capitalize text-slate-400">
-                {displayRole}
-              </p>
-
-            </div>
-
-            {/* Sign Out */}
-            {onLogout && (
-              <button
-                type="button"
-                onClick={onLogout}
-                className="rounded-lg px-2 py-1.5 text-[11px] font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-rose-600"
-                title="Sign out"
-              >
-                Sign Out
-              </button>
-            )}
-
-          </div>
-        ) : (
-
-          /* ------------------------------------ */
-          /* Sign In */
-          /* ------------------------------------ */
-
+        {/* Notifications */}
+        <div className="relative">
           <button
             type="button"
-            onClick={onOpenAuthModal}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+            onClick={() =>
+              setShowNotifications(!showNotifications)
+            }
+            className="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+            aria-label="Notifications"
           >
-            <UserIcon className="h-3.5 w-3.5" />
-            <span>Sign In</span>
+            <BellIcon className="w-5 h-5" />
+
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+            </span>
           </button>
 
-        )}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white p-4 shadow-xl border border-slate-100 z-50 animate-fadeIn">
 
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Notifications ({notifications.length})
+                </h4>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowNotifications(false)
+                  }
+                  className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  aria-label="Close notifications"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="mt-2 divide-y divide-slate-100">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="py-2.5 first:pt-1.5 last:pb-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">
+                        {notification.title}
+                      </span>
+
+                      <span className="text-[10px] text-slate-400">
+                        {notification.time}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                      {notification.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* User Profile / Authentication */}
+        <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+
+          {currentUser ? (
+            <div className="flex items-center space-x-2">
+
+              {/* Avatar */}
+              <div className="h-8 w-8 rounded-full bg-indigo-600 text-white font-semibold text-xs flex items-center justify-center ring-2 ring-indigo-100">
+                {initials}
+              </div>
+
+              {/* Name + Role */}
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-semibold text-slate-800 leading-none max-w-[120px] truncate">
+                  {displayName}
+                </div>
+
+                <div className="text-[10px] text-slate-500 font-medium capitalize mt-0.5">
+                  <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 font-semibold text-indigo-700">
+                    {displayRole}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sign Out */}
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="text-[11px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg transition-colors ml-1 cursor-pointer border border-transparent hover:border-slate-200"
+                  title="Sign out"
+                >
+                  Sign Out
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenAuthModal}
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            >
+              <UserIcon className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

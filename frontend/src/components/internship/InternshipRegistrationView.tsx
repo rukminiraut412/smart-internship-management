@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import {
   BriefcaseIcon,
   BuildingOfficeIcon,
@@ -15,12 +14,8 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@/components/common/Icons";
-
-import {
-  studentsApi,
-  authStorage,
-  StudentInternshipItem,
-} from "@/lib/api";
+import { RegisteredInternship } from "@/data/mockData";
+import { BackendInternship, studentsApi } from "@/lib/api";
 
 const DOMAINS = [
   "Software Engineering & Architecture",
@@ -47,13 +42,18 @@ interface FormErrors {
   mentorPhone?: string;
 }
 
-export function InternshipRegistrationView() {
-  const [registrations, setRegistrations] = useState<
-    StudentInternshipItem[]
-  >([]);
+interface InternshipRegistrationViewProps {
+  studentId?: string;
+  onRegistrationSuccess?: (internship: BackendInternship) => void;
+}
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export function InternshipRegistrationView({
+  studentId,
+  onRegistrationSuccess,
+}: InternshipRegistrationViewProps = {}) {
+  const [registrations, setRegistrations] = useState<RegisteredInternship[]>(
+    []
+  );
 
   const [formData, setFormData] = useState({
     companyName: "",
@@ -73,46 +73,74 @@ export function InternshipRegistrationView() {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
-  const [errorNotice, setErrorNotice] = useState<string | null>(null);
-
-  // ==========================================================================
-  // LOAD REAL REGISTRATIONS FROM BACKEND
-  // ==========================================================================
-
-  const loadRegistrations = async () => {
-    const user = authStorage.getUser();
-
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      const data = await studentsApi.getInternships(user.id);
-
-      setRegistrations(data);
-    } catch (error) {
-      console.error("Failed to load registrations:", error);
-
-      setErrorNotice(
-        error instanceof Error
-          ? error.message
-          : "Unable to load internship registrations."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    loadRegistrations();
-  }, []);
+    if (!studentId) return;
 
-  // ==========================================================================
-  // VALIDATION
-  // ==========================================================================
+    studentsApi
+      .getInternships(studentId)
+      .then((items) => {
+        if (items && items.length > 0) {
+          const mapped: RegisteredInternship[] = items.map((item) => {
+            const intern = item.internship;
+
+            return {
+              id: intern.id,
+              companyName:
+                intern.company_name || "Host Organization",
+              internshipTitle: intern.title,
+              domain:
+                intern.domain || "General Engineering",
+              startDate: intern.start_date
+                ? intern.start_date.split("T")[0]
+                : "2026-08-15",
+              endDate: intern.end_date
+                ? intern.end_date.split("T")[0]
+                : "2026-11-07",
+              mode:
+                (intern.mode as
+                  | "Online"
+                  | "Offline"
+                  | "Hybrid") || "Hybrid",
+              location: intern.location || "Remote",
+              requiredSkills: [
+                "Engineering",
+                "Development",
+              ],
+              description: intern.description || "",
+              mentorName: "Assigned Supervisor",
+              mentorEmail: "supervisor@company.com",
+              mentorPhone: "+1 (555) 000-0000",
+              registrationStatus:
+                (item.application_status === "Approved"
+                  ? "Approved"
+                  : "Pending Review") as
+                  | "Approved"
+                  | "Pending Review",
+              submittedAt: item.applied_at
+                ? new Date(
+                    item.applied_at
+                  ).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "Recently",
+            };
+          });
+
+          setRegistrations(mapped);
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          "Could not load existing student registrations",
+          err
+        );
+      });
+  }, [studentId]);
 
   const validate = (): boolean => {
     const errs: FormErrors = {};
@@ -120,9 +148,7 @@ export function InternshipRegistrationView() {
     if (!formData.companyName.trim()) {
       errs.companyName =
         "Company/Organization name is required";
-    } else if (
-      formData.companyName.trim().length < 2
-    ) {
+    } else if (formData.companyName.trim().length < 2) {
       errs.companyName =
         "Company name must be at least 2 characters";
     }
@@ -209,13 +235,8 @@ export function InternshipRegistrationView() {
     return Object.keys(errs).length === 0;
   };
 
-  // ==========================================================================
-  // SKILLS
-  // ==========================================================================
-
   const handleAddSkill = () => {
-    const skill =
-      formData.skillInput.trim();
+    const skill = formData.skillInput.trim();
 
     if (!skill) return;
 
@@ -262,62 +283,28 @@ export function InternshipRegistrationView() {
     }));
   };
 
-  // ==========================================================================
-  // RESET FORM
-  // ==========================================================================
-
-  const resetForm = () => {
-    setFormData({
-      companyName: "",
-      internshipTitle: "",
-      domain: DOMAINS[0],
-      startDate: "",
-      endDate: "",
-      mode: "Hybrid",
-      location: "",
-      skillInput: "",
-      requiredSkills: [],
-      description: "",
-      mentorName: "",
-      mentorEmail: "",
-      mentorPhone: "",
-    });
-
-    setErrors({});
-  };
-
-  // ==========================================================================
-  // SUBMIT REGISTRATION TO BACKEND
-  // ==========================================================================
-
   const handleSubmit = async (
     e: React.FormEvent
   ) => {
     e.preventDefault();
-
-    setSuccessNotice(null);
-    setErrorNotice(null);
+    setApiError(null);
 
     if (!validate()) {
       return;
     }
 
-    const user = authStorage.getUser();
-
-    if (!user) {
-      setErrorNotice(
-        "Please log in before registering an internship."
-      );
-
-      return;
-    }
+    setIsSubmitting(true);
 
     try {
-      setIsSubmitting(true);
+      if (!studentId) {
+        throw new Error(
+          "Student authentication required. Please ensure you are logged in to register an internship."
+        );
+      }
 
-      const registration =
+      const createdInternship =
         await studentsApi.registerInternship(
-          user.id,
+          studentId,
           {
             company_name:
               formData.companyName.trim(),
@@ -328,27 +315,24 @@ export function InternshipRegistrationView() {
             domain:
               formData.domain,
 
-            description:
-              formData.description.trim(),
+            start_date: formData.startDate
+              ? `${formData.startDate}T09:00:00`
+              : undefined,
+
+            end_date: formData.endDate
+              ? `${formData.endDate}T17:00:00`
+              : undefined,
+
+            mode: formData.mode,
 
             location:
               formData.location.trim(),
 
-            mode:
-              formData.mode,
-
-            start_date:
-              formData.startDate
-                ? `${formData.startDate}T00:00:00`
-                : undefined,
-
-            end_date:
-              formData.endDate
-                ? `${formData.endDate}T00:00:00`
-                : undefined,
-
             required_skills:
               formData.requiredSkills,
+
+            description:
+              formData.description.trim(),
 
             mentor_name:
               formData.mentorName.trim(),
@@ -358,55 +342,131 @@ export function InternshipRegistrationView() {
 
             mentor_phone:
               formData.mentorPhone.trim(),
-
-            cover_letter: undefined,
           }
         );
 
-      // Add the newly created registration
-      // to the live UI.
+      const newRegistration: RegisteredInternship = {
+        id: createdInternship.id,
+
+        companyName:
+          createdInternship.company_name ||
+          formData.companyName.trim(),
+
+        internshipTitle:
+          createdInternship.title,
+
+        domain:
+          createdInternship.domain ||
+          formData.domain,
+
+        startDate:
+          createdInternship.start_date
+            ? createdInternship.start_date.split(
+                "T"
+              )[0]
+            : formData.startDate,
+
+        endDate:
+          createdInternship.end_date
+            ? createdInternship.end_date.split(
+                "T"
+              )[0]
+            : formData.endDate,
+
+        mode:
+          (createdInternship.mode as
+            | "Online"
+            | "Offline"
+            | "Hybrid") ||
+          formData.mode,
+
+        location:
+          createdInternship.location ||
+          formData.location.trim(),
+
+        requiredSkills:
+          formData.requiredSkills,
+
+        description:
+          createdInternship.description ||
+          formData.description.trim(),
+
+        mentorName:
+          formData.mentorName.trim() ||
+          "Assigned Supervisor",
+
+        mentorEmail:
+          formData.mentorEmail.trim() ||
+          "supervisor@company.com",
+
+        mentorPhone:
+          formData.mentorPhone.trim() ||
+          "+1 (555) 000-0000",
+
+        registrationStatus: "Approved",
+
+        submittedAt:
+          new Date().toLocaleDateString(
+            "en-US",
+            {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }
+          ),
+      };
+
       setRegistrations((prev) => [
-        registration,
+        newRegistration,
         ...prev,
       ]);
 
       setSuccessNotice(
-        "Internship registration submitted successfully and saved to the database."
+        `Internship Registration Submitted Successfully! Assigned ID: ${newRegistration.id}. Status: Approved.`
       );
 
-      resetForm();
+      if (
+        createdInternship &&
+        onRegistrationSuccess
+      ) {
+        onRegistrationSuccess(
+          createdInternship
+        );
+      }
 
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
 
-      setTimeout(() => {
-        setSuccessNotice(null);
-      }, 6000);
-    } catch (error) {
+      setTimeout(
+        () => setSuccessNotice(null),
+        8000
+      );
+    } catch (err: unknown) {
       console.error(
-        "Internship registration failed:",
-        error
+        "Failed to register internship:",
+        err
       );
 
-      setErrorNotice(
-        error instanceof Error
-          ? error.message
-          : "Unable to submit internship registration."
-      );
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Failed to register internship. Please check your connection and try again.";
+
+      setApiError(msg);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ==========================================================================
-  // RENDER
-  // ==========================================================================
-
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
-
       {/* Header Banner */}
       <div className="rounded-2xl bg-white border border-slate-200 p-6 shadow-xs">
         <div className="flex items-center space-x-3">
@@ -437,25 +497,23 @@ export function InternshipRegistrationView() {
         </div>
       )}
 
-      {/* Error Notification */}
-      {errorNotice && (
+      {/* API Error Notification */}
+      {apiError && (
         <div className="flex items-start space-x-3 rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 shadow-2xs">
           <AlertCircleIcon className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
 
           <div className="leading-relaxed">
-            {errorNotice}
+            {apiError}
           </div>
         </div>
       )}
 
-      {/* Registration Form */}
+      {/* Registration Form Card */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-
         <form
           onSubmit={handleSubmit}
           className="space-y-6"
         >
-
           {/* Validation Error */}
           {Object.keys(errors).length > 0 && (
             <div className="rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-700 flex items-center gap-2">
@@ -467,10 +525,7 @@ export function InternshipRegistrationView() {
             </div>
           )}
 
-          {/* ================================================================ */}
           {/* SECTION 1 */}
-          {/* ================================================================ */}
-
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
               <BuildingOfficeIcon className="w-4 h-4 text-indigo-600" />
@@ -479,17 +534,20 @@ export function InternshipRegistrationView() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
               {/* Company */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Company / Organization Name{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <input
                   type="text"
-                  value={formData.companyName}
+                  value={
+                    formData.companyName
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -516,12 +574,16 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Internship Title{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <input
                   type="text"
-                  value={formData.internshipTitle}
+                  value={
+                    formData.internshipTitle
+                  }
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -548,7 +610,9 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Internship Domain{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <select
@@ -579,7 +643,9 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Internship Mode{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -621,7 +687,9 @@ export function InternshipRegistrationView() {
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Work Location / Office Address{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <div className="relative">
@@ -631,7 +699,9 @@ export function InternshipRegistrationView() {
 
                   <input
                     type="text"
-                    value={formData.location}
+                    value={
+                      formData.location
+                    }
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -657,12 +727,8 @@ export function InternshipRegistrationView() {
             </div>
           </div>
 
-          {/* ================================================================ */}
           {/* SECTION 2 */}
-          {/* ================================================================ */}
-
           <div className="pt-4 border-t border-slate-100">
-
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-indigo-600" />
 
@@ -670,12 +736,13 @@ export function InternshipRegistrationView() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
               {/* Start */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Start Date{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <input
@@ -708,7 +775,9 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   End Date{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <input
@@ -739,12 +808,8 @@ export function InternshipRegistrationView() {
             </div>
           </div>
 
-          {/* ================================================================ */}
           {/* SECTION 3 */}
-          {/* ================================================================ */}
-
           <div className="pt-4 border-t border-slate-100">
-
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
               <BriefcaseIcon className="w-4 h-4 text-indigo-600" />
 
@@ -755,11 +820,12 @@ export function InternshipRegistrationView() {
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Required Technical Skills{" "}
-                <span className="text-rose-500">*</span>
+                <span className="text-rose-500">
+                  *
+                </span>
               </label>
 
               <div className="flex gap-2 max-w-lg">
-
                 <input
                   type="text"
                   value={
@@ -807,7 +873,6 @@ export function InternshipRegistrationView() {
               )}
 
               <div className="mt-2.5 flex flex-wrap gap-2">
-
                 {formData.requiredSkills.map(
                   (skill) => (
                     <span
@@ -838,10 +903,11 @@ export function InternshipRegistrationView() {
 
             {/* Description */}
             <div className="mt-4">
-
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Internship Description & Deliverables{" "}
-                <span className="text-rose-500">*</span>
+                <span className="text-rose-500">
+                  *
+                </span>
               </label>
 
               <textarea
@@ -872,12 +938,8 @@ export function InternshipRegistrationView() {
             </div>
           </div>
 
-          {/* ================================================================ */}
           {/* SECTION 4 */}
-          {/* ================================================================ */}
-
           <div className="pt-4 border-t border-slate-100">
-
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-indigo-600" />
 
@@ -885,12 +947,13 @@ export function InternshipRegistrationView() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-
               {/* Mentor Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Mentor / Guide Name{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <div className="relative">
@@ -930,7 +993,9 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Mentor Official Email{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <div className="relative">
@@ -970,7 +1035,9 @@ export function InternshipRegistrationView() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Mentor Phone Number{" "}
-                  <span className="text-rose-500">*</span>
+                  <span className="text-rose-500">
+                    *
+                  </span>
                 </label>
 
                 <div className="relative">
@@ -1008,34 +1075,24 @@ export function InternshipRegistrationView() {
             </div>
           </div>
 
-          {/* ================================================================ */}
           {/* SUBMIT */}
-          {/* ================================================================ */}
-
           <div className="pt-6 border-t border-slate-100 flex items-center justify-end">
-
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+              className="w-full sm:w-auto rounded-xl bg-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting
-                ? "Saving Registration..."
+                ? "Submitting Registration..."
                 : "Submit Registration"}
             </button>
-
           </div>
         </form>
       </div>
 
-      {/* ================================================================ */}
-      {/* REAL REGISTRATION HISTORY */}
-      {/* ================================================================ */}
-
+      {/* REGISTERED INTERNSHIPS HISTORY */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-
           <div>
             <h2 className="text-base font-bold text-slate-900">
               Registered Internships History
@@ -1049,155 +1106,102 @@ export function InternshipRegistrationView() {
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
             {registrations.length} Placements
           </span>
-
         </div>
 
-        {/* Loading */}
-        {isLoading && (
-          <div className="py-8 text-center text-xs text-slate-500">
-            Loading registrations...
+        {registrations.length === 0 && (
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+            <BriefcaseIcon className="mx-auto h-8 w-8 text-slate-300" />
+
+            <p className="mt-3 text-sm font-semibold text-slate-700">
+              No internship registered yet
+            </p>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Submit the registration form above to add your internship.
+            </p>
           </div>
         )}
 
-        {/* Empty */}
-        {!isLoading &&
-          registrations.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
-              <BriefcaseIcon className="mx-auto h-8 w-8 text-slate-300" />
+        {registrations.length > 0 && (
+          <div className="space-y-3">
+            {registrations.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 hover:bg-slate-100/70 transition-colors text-xs space-y-2"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-slate-900 text-sm block">
+                      {item.internshipTitle}
+                    </span>
 
-              <p className="mt-3 text-sm font-semibold text-slate-700">
-                No internship registered yet
-              </p>
+                    <span className="text-indigo-600 font-semibold">
+                      {item.companyName}
+                    </span>
 
-              <p className="mt-1 text-xs text-slate-500">
-                Submit the registration form above to add your internship.
-              </p>
-            </div>
-          )}
+                    {item.domain && (
+                      <>
+                        <span className="text-slate-400 mx-1.5">
+                          •
+                        </span>
 
-        {/* Registrations */}
-        {!isLoading &&
-          registrations.length > 0 && (
-            <div className="space-y-3">
+                        <span className="text-slate-500">
+                          {item.domain}
+                        </span>
+                      </>
+                    )}
+                  </div>
 
-              {registrations.map(
-                (item) => {
-                  const internship =
-                    item.internship;
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold border bg-amber-50 text-amber-700 border-amber-200">
+                      {item.registrationStatus}
+                    </span>
 
-                  return (
-                    <div
-                      key={
-                        item.application_id
-                      }
-                      className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 hover:bg-slate-100/70 transition-colors text-xs space-y-2"
-                    >
+                    <span className="text-slate-400 font-mono text-[10px]">
+                      Application
+                    </span>
+                  </div>
+                </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-600 pt-1">
+                  <div>
+                    <span className="text-slate-400 block">
+                      Duration & Mode
+                    </span>
 
-                        <div>
-                          <span className="font-bold text-slate-900 text-sm block">
-                            {
-                              internship.title
-                            }
-                          </span>
+                    <span>
+                      {item.startDate || "—"}{" "}
+                      to{" "}
+                      {item.endDate || "—"}{" "}
+                      ({item.mode})
+                    </span>
+                  </div>
 
-                          <span className="text-indigo-600 font-semibold">
-                            {
-                              internship.company_name ||
-                              "Company"
-                            }
-                          </span>
+                  <div>
+                    <span className="text-slate-400 block">
+                      Location
+                    </span>
 
-                          {internship.domain && (
-                            <>
-                              <span className="text-slate-400 mx-1.5">
-                                •
-                              </span>
+                    <span>
+                      {item.location || "—"}
+                    </span>
+                  </div>
 
-                              <span className="text-slate-500">
-                                {
-                                  internship.domain
-                                }
-                              </span>
-                            </>
-                          )}
-                        </div>
+                  <div>
+                    <span className="text-slate-400 block">
+                      Registration Date
+                    </span>
 
-                        <div className="flex items-center gap-2">
-
-                          <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold border bg-amber-50 text-amber-700 border-amber-200">
-                            {
-                              item.application_status
-                            }
-                          </span>
-
-                          <span className="text-slate-400 font-mono text-[10px]">
-                            Application
-                          </span>
-
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-slate-600 pt-1">
-
-                        <div>
-                          <span className="text-slate-400 block">
-                            Duration & Mode
-                          </span>
-
-                          <span>
-                            {internship.start_date
-                              ? internship.start_date.split(
-                                  "T"
-                                )[0]
-                              : "—"}{" "}
-                            to{" "}
-                            {internship.end_date
-                              ? internship.end_date.split(
-                                  "T"
-                                )[0]
-                              : "—"}{" "}
-                            ({internship.mode})
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-slate-400 block">
-                            Location
-                          </span>
-
-                          <span>
-                            {
-                              internship.location
-                            }
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-slate-400 block">
-                            Registration Date
-                          </span>
-
-                          <span>
-                            {item.applied_at
-                              ? new Date(
-                                  item.applied_at
-                                ).toLocaleDateString()
-                              : "—"}
-                          </span>
-                        </div>
-
-                      </div>
-
-                    </div>
-                  );
-                }
-              )}
-
-            </div>
-          )}
-
+                    <span>
+                      {item.submittedAt ||
+                        "—"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

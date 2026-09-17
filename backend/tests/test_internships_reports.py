@@ -339,3 +339,42 @@ def test_list_internship_reports():
     resp_student1 = client.get(f"/api/internships/{internship_id}/reports?student_id={student1_id}")
     assert resp_student1.status_code == 200
     assert len(resp_student1.json()) == 2
+
+
+def test_create_progress_report_with_user_id_mapping():
+    """Regression test: verify submitting report using User.id resolves to canonical Student.id."""
+    db = TestingSessionLocal()
+    user = User(email="mapping_test@test.com", hashed_password="pw", full_name="Mapping Test", role="student")
+    company = Company(name="Mapping Co")
+    db.add_all([user, company])
+    db.commit()
+
+    student = Student(user_id=user.id, student_id_number="STU-MAPPING-01")
+    internship = Internship(company_id=company.id, title="Mapping Intern")
+    db.add_all([student, internship])
+    db.commit()
+
+    user_id = user.id
+    student_id = student.id
+    internship_id = internship.id
+    db.close()
+
+    payload = {
+        "student_id": user_id,  # Intentionally passing User.id instead of Student.id
+        "week_number": 1,
+        "title": "Week 1: Mapping Test",
+        "summary": "Testing user_id resolution to canonical Student.id.",
+        "hours_logged": 15.0,
+        "status": "Pending Submission",
+    }
+    response = client.post(f"/api/internships/{internship_id}/reports", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["student_id"] == student_id  # Confirms it was resolved to canonical Student.id
+    assert data["week_number"] == 1
+
+    # Verify listing reports using user_id as filter resolves correctly
+    list_resp = client.get(f"/api/internships/{internship_id}/reports?student_id={user_id}")
+    assert list_resp.status_code == 200
+    assert len(list_resp.json()) == 1
+    assert list_resp.json()[0]["id"] == data["id"]
