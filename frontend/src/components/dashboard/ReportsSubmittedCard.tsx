@@ -12,20 +12,28 @@ export function ReportsSubmittedCard({ reports, onNavigateToReports }: Props) {
   const pendingCount = reports.filter((r) => r.status === "Pending Submission").length;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-shadow">
+    <div
+      onClick={onNavigateToReports}
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-all ${
+        onNavigateToReports ? "cursor-pointer hover:border-indigo-300" : ""
+      }`}
+    >
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
           <div className="p-2 rounded-lg bg-teal-50 text-teal-600">
             <ClipboardCheckIcon className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">Reports Submitted</h2>
+            <h2 className="text-sm font-bold text-slate-900">Reports</h2>
             <p className="text-xs text-slate-500">Weekly Cadence</p>
           </div>
         </div>
         <div className="text-right">
           <span className="text-sm font-bold text-teal-600">{approvedCount}</span>
-          <span className="text-xs text-slate-400">/{reports.length} Approved</span>
+          <span className="text-xs text-slate-400">/{reports.length} Submitted</span>
+          {pendingCount > 0 && (
+            <div className="text-[11px] font-semibold text-amber-600">{pendingCount} Pending</div>
+          )}
         </div>
       </div>
 

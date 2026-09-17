@@ -24,8 +24,22 @@ def seed_demo_data() -> None:
     """Populates initial demo records if the database is empty."""
     db: Session = SessionLocal()
     try:
-        # Check if already seeded
-        if db.query(User).first():
+        # Ensure default demo Admin user exists even if database was already partially seeded
+        admin_user = db.query(User).filter(User.email == "admin@university.edu").first()
+        if not admin_user:
+            admin_pw = hash_password("SecurePassword123!")
+            admin_user = User(
+                email="admin@university.edu",
+                hashed_password=admin_pw,
+                full_name="System Administrator",
+                role="admin",
+                is_active=True,
+            )
+            db.add(admin_user)
+            db.commit()
+
+        # Check if rest of demo data is already seeded
+        if db.query(User).filter(User.email == "alex.rivera@university.edu").first():
             return
 
         # 1. Create Default Student User

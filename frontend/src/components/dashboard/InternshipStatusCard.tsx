@@ -4,11 +4,17 @@ import { InternshipDetails } from "@/data/mockData";
 
 interface Props {
   internship: InternshipDetails;
+  onNavigateToInternship?: () => void;
 }
 
-export function InternshipStatusCard({ internship }: Props) {
+export function InternshipStatusCard({ internship, onNavigateToInternship }: Props) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-shadow">
+    <div
+      onClick={onNavigateToInternship}
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-all ${
+        onNavigateToInternship ? "cursor-pointer hover:border-indigo-300" : ""
+      }`}
+    >
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
         <div className="flex items-center space-x-2">
           <div className="p-2 rounded-lg bg-blue-50 text-blue-600">

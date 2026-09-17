@@ -306,3 +306,210 @@ class ProgressReportResponse(BaseModel):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# MENTOR SCHEMAS
+# ============================================================================
+
+class MentorProfileResponse(BaseModel):
+    """Schema representing mentor profile information."""
+    id: str
+    user_id: str
+    name: str
+    email: str
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    phone: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MentorProfileUpdateRequest(BaseModel):
+    """Schema for updating mentor profile."""
+    name: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    company_name: Optional[str] = Field(default=None, max_length=255)
+    job_title: Optional[str] = Field(default=None, max_length=255)
+    department: Optional[str] = Field(default=None, max_length=255)
+    phone: Optional[str] = Field(default=None, max_length=50)
+
+
+class MentorInternItem(BaseModel):
+    """Summary of an intern assigned to a mentor."""
+    student_id: str
+    user_id: str
+    student_name: str
+    student_email: str
+    student_id_number: Optional[str] = None
+    college: Optional[str] = None
+    department: Optional[str] = None
+    internship_id: str
+    internship_title: str
+    company_name: Optional[str] = None
+    progress_pct: int = 0
+    tasks_completed: int = 0
+    total_tasks: int = 0
+    reports_submitted: int = 0
+    total_reports: int = 12
+    attention_status: str = "ON_TRACK"
+    latest_report_status: Optional[str] = None
+
+
+class ReportReviewRequest(BaseModel):
+    """Schema for mentor reviewing a weekly progress report."""
+    status: str = Field(..., description="Approved, Needs Revision, or Rejected")
+    mentor_feedback: Optional[str] = Field(default=None, description="Detailed qualitative feedback")
+    mentor_score: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Numerical score from 1.0 to 5.0")
+
+
+class EvaluationCreate(BaseModel):
+    """Schema for creating a student evaluation."""
+    student_id: str
+    internship_id: str
+    evaluation_type: str = Field(default="Midterm", description="Midterm, Final, or Monthly")
+    rating: float = Field(..., ge=1.0, le=5.0, description="Rating score 1.0 to 5.0")
+    comments: Optional[str] = None
+    recommendation: Optional[str] = None
+
+
+class EvaluationResponse(BaseModel):
+    """Schema representing an evaluation."""
+    id: str
+    student_id: str
+    internship_id: str
+    mentor_id: str
+    evaluation_type: str
+    rating: float
+    comments: Optional[str] = None
+    recommendation: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskCreateRequest(BaseModel):
+    """Schema for creating an intern task."""
+    internship_id: str
+    student_id: str
+    title: str = Field(..., min_length=2, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = Field(default="General", max_length=100)
+    due_date: Optional[datetime] = None
+
+
+class TaskResponse(BaseModel):
+    """Schema representing an assigned task."""
+    id: str
+    internship_id: str
+    student_id: str
+    mentor_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    status: str
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# ADMIN SCHEMAS
+# ============================================================================
+
+class AdminStatsResponse(BaseModel):
+    """Schema representing high-level admin dashboard KPIs."""
+    total_students: int = 0
+    active_internships: int = 0
+    total_companies: int = 0
+    total_mentors: int = 0
+    pending_applications: int = 0
+    reports_pending_review: int = 0
+    students_needing_attention: int = 0
+    completed_internships: int = 0
+
+
+class AdminApplicationItem(BaseModel):
+    """Schema representing an application in admin management view."""
+    id: str
+    student_id: str
+    student_name: str
+    student_email: str
+    student_id_number: Optional[str] = None
+    internship_id: str
+    internship_title: str
+    company_name: Optional[str] = None
+    status: str
+    applied_at: datetime
+
+
+class ApplicationStatusUpdateRequest(BaseModel):
+    """Schema for admin updating an application's status."""
+    status: str = Field(..., description="Approved, Rejected, or Pending")
+
+
+class AdminMentorItem(BaseModel):
+    """Schema representing mentor summary for admin directory."""
+    id: str
+    user_id: str
+    name: str
+    email: str
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    phone: Optional[str] = None
+    assigned_interns_count: int = 0
+    active_internships_count: int = 0
+
+
+class AssignMentorRequest(BaseModel):
+    """Schema for assigning or reassigning a mentor to an internship."""
+    internship_id: str
+    mentor_id: str
+
+
+class AdminStudentItem(BaseModel):
+    """Schema representing student summary in admin portal."""
+    id: str
+    user_id: str
+    name: str
+    email: str
+    student_id_number: Optional[str] = None
+    college: Optional[str] = None
+    department: Optional[str] = None
+    year_of_study: Optional[str] = None
+    gpa: Optional[float] = None
+    active_internship_title: Optional[str] = None
+    status: str = "Active"
+
+
+class AdminInternshipItem(BaseModel):
+    """Schema representing internship in admin portal."""
+    id: str
+    title: str
+    company_name: Optional[str] = None
+    mentor_name: Optional[str] = None
+    domain: Optional[str] = None
+    mode: str = "Hybrid"
+    status: str = "Active"
+    stipend: Optional[str] = None
+    applicant_count: int = 0
+
+
+class AdminReportAlertItem(BaseModel):
+    """Schema representing reports & alerts in admin portal."""
+    id: str
+    type: str  # "Report" or "Alert"
+    title: str
+    student_name: str
+    internship_title: Optional[str] = None
+    status: str
+    severity: str = "Info"
+    date: datetime

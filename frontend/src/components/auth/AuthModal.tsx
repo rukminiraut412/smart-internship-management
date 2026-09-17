@@ -18,10 +18,10 @@ interface AuthModalProps {
 
 export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("alex.rivera@university.edu");
-  const [password, setPassword] = useState("SecurePassword123!");
-  const [fullName, setFullName] = useState("Alex Rivera");
-  const [role, setRole] = useState<"student" | "mentor">("student");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<"student" | "mentor" | "admin">("student");
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -29,10 +29,25 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
 
   if (!isOpen) return null;
 
+  const handleFillDemo = (demoEmail: string, demoRole?: "student" | "mentor" | "admin") => {
+    setEmail(demoEmail);
+    setPassword("SecurePassword123!");
+    if (demoRole) {
+      setRole(demoRole);
+    }
+    setErrorMessage(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (!email.trim() || !password) {
+      setErrorMessage("Please enter both email and password.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -41,12 +56,18 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
           email: email.trim(),
           password,
         });
-        setSuccessMessage(`Welcome back, ${response.user.full_name}!`);
+        setSuccessMessage(`Welcome back, ${response.user.full_name}! (${response.user.role.toUpperCase()})`);
         setTimeout(() => {
           onAuthSuccess(response.user);
           onClose();
-        }, 600);
+        }, 500);
       } else {
+        if (!fullName.trim()) {
+          setErrorMessage("Please provide your full name.");
+          setIsLoading(false);
+          return;
+        }
+
         const registered = await authApi.register({
           email: email.trim(),
           password,
@@ -62,7 +83,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
         setTimeout(() => {
           onAuthSuccess(loginRes.user || registered);
           onClose();
-        }, 600);
+        }, 500);
       }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
@@ -100,8 +121,8 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
           </h3>
           <p className="text-xs text-slate-500 mt-1">
             {mode === "login"
-              ? "Authenticate with your student or mentor credentials"
-              : "Register as a student or mentor for progress monitoring"}
+              ? "Select a demo account or sign in with your credentials"
+              : "Register as a student, industry mentor, or demo administrator"}
           </p>
         </div>
 
@@ -137,6 +158,39 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
           </button>
         </div>
 
+        {/* Demo Quick-Fill Section (Visible on Login tab) */}
+        {mode === "login" && (
+          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 mb-2 flex items-center justify-between">
+              <span>Quick Demo Accounts</span>
+              <span className="text-[10px] font-normal text-indigo-600">One-click sign in fill</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleFillDemo("alex.rivera@university.edu", "student")}
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
+              >
+                🎓 Student
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFillDemo("m.vance@cloudscale.io", "mentor")}
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
+              >
+                👔 Mentor
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFillDemo("admin@university.edu", "admin")}
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
+              >
+                ⚡ Admin
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Feedback Alerts */}
         {errorMessage && (
           <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-start gap-2">
@@ -153,7 +207,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
         )}
 
         {/* Auth Form */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
           {mode === "register" && (
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -165,7 +219,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Alex Rivera"
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
               />
             </div>
           )}
@@ -183,8 +237,8 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="alex.rivera@university.edu"
-                className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
+                placeholder="name@university.edu"
+                className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
               />
             </div>
           </div>
@@ -200,7 +254,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
+              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
             />
           </div>
 
@@ -209,13 +263,13 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Account Role
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setRole("student")}
-                  className={`py-2 text-xs font-semibold rounded-xl border ${
+                  className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${
                     role === "student"
-                      ? "bg-indigo-50 border-indigo-500 text-indigo-700"
+                      ? "bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs"
                       : "border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -224,13 +278,24 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
                 <button
                   type="button"
                   onClick={() => setRole("mentor")}
-                  className={`py-2 text-xs font-semibold rounded-xl border ${
+                  className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${
                     role === "mentor"
-                      ? "bg-indigo-50 border-indigo-500 text-indigo-700"
+                      ? "bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs"
                       : "border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
                   Mentor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("admin")}
+                  className={`py-1.5 text-xs font-semibold rounded-xl border transition-colors ${
+                    role === "admin"
+                      ? "bg-indigo-50 border-indigo-500 text-indigo-700 shadow-2xs"
+                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  Admin (Demo)
                 </button>
               </div>
             </div>
@@ -254,22 +319,8 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
             </button>
           </div>
         </form>
-
-        {/* Demo Credentials Quick-Fill Hint */}
-        <div className="mt-4 pt-3 border-t border-slate-100 text-center text-[11px] text-slate-400">
-          <span>Demo Account: </span>
-          <button
-            type="button"
-            onClick={() => {
-              setEmail("alex.rivera@university.edu");
-              setPassword("SecurePassword123!");
-            }}
-            className="text-indigo-600 font-medium hover:underline"
-          >
-            alex.rivera@university.edu
-          </button>
-        </div>
       </div>
     </div>
   );
 }
+

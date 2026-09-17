@@ -5,14 +5,16 @@ import {
   DashboardIcon,
   UserIcon,
   BriefcaseIcon,
-  ClipboardCheckIcon,
   TrendingUpIcon,
-  DocumentTextIcon,
   TargetIcon,
-  BellIcon,
   XIcon,
+  AcademicCapIcon,
+  DocumentTextIcon,
+  ClipboardCheckIcon,
+  ShieldExclamationIcon,
 } from "@/components/common/Icons";
 import { mockStudentData } from "@/data/mockData";
+import { UserProfile } from "@/lib/api";
 
 export interface NavItem {
   id: string;
@@ -22,16 +24,31 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-export const navItems: NavItem[] = [
+export const studentNavItems: NavItem[] = [
   { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
+  { id: "My Internship", label: "My Internship", icon: BriefcaseIcon },
+  { id: "Progress & Reports", label: "Progress & Reports", icon: TrendingUpIcon },
+  { id: "Intelligence", label: "Intelligence", icon: TargetIcon },
   { id: "My Profile", label: "My Profile", icon: UserIcon },
-  { id: "Internship Registration", label: "Internship Registration", badge: "Form", badgeColor: "bg-indigo-100 text-indigo-700", icon: BriefcaseIcon },
+];
+
+export const mentorNavItems: NavItem[] = [
+  { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
+  { id: "My Interns", label: "My Interns", icon: AcademicCapIcon },
+  { id: "Weekly Reports", label: "Weekly Reports", icon: DocumentTextIcon },
+  { id: "Tasks", label: "Tasks", icon: ClipboardCheckIcon },
+  { id: "Evaluations", label: "Evaluations", icon: TrendingUpIcon },
+  { id: "My Profile", label: "My Profile", icon: UserIcon },
+];
+
+export const adminNavItems: NavItem[] = [
+  { id: "Dashboard", label: "Dashboard", icon: DashboardIcon },
+  { id: "Students", label: "Students", icon: AcademicCapIcon },
   { id: "Internships", label: "Internships", icon: BriefcaseIcon },
-  { id: "Applications", label: "Applications", icon: ClipboardCheckIcon },
-  { id: "Progress", label: "Progress", icon: TrendingUpIcon },
-  { id: "Weekly Reports", label: "Weekly Reports", badge: "Week 5", badgeColor: "bg-emerald-100 text-emerald-800", icon: DocumentTextIcon },
-  { id: "Skill Gap", label: "Skill Gap", icon: TargetIcon },
-  { id: "Notifications", label: "Notifications", badge: "2", badgeColor: "bg-amber-100 text-amber-800", icon: BellIcon },
+  { id: "Applications", label: "Applications", icon: DocumentTextIcon },
+  { id: "Mentors", label: "Mentors", icon: UserIcon },
+  { id: "Reports & Alerts", label: "Reports & Alerts", icon: ShieldExclamationIcon },
+  { id: "Profile", label: "Profile", icon: UserIcon },
 ];
 
 interface SidebarProps {
@@ -39,10 +56,48 @@ interface SidebarProps {
   setActiveTab: (tabId: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  role?: "student" | "mentor" | "admin" | string;
+  currentUser?: UserProfile | null;
 }
 
-export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarProps) {
+export function Sidebar({
+  activeTab,
+  setActiveTab,
+  isOpen,
+  onClose,
+  role = "student",
+  currentUser,
+}: SidebarProps) {
   const { student } = mockStudentData;
+
+  const navItems =
+    role === "mentor"
+      ? mentorNavItems
+      : role === "admin"
+      ? adminNavItems
+      : studentNavItems;
+
+  const portalTitle =
+    role === "mentor"
+      ? "Industry Mentorship Portal"
+      : role === "admin"
+      ? "Institutional Admin Portal"
+      : "Student Internship Portal";
+
+  const userDisplayName = currentUser ? currentUser.full_name : student.name;
+  const userInitials = userDisplayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
+  const roleLabel =
+    role === "mentor"
+      ? "Industry Mentor"
+      : role === "admin"
+      ? "System Administrator"
+      : "Student";
 
   return (
     <>
@@ -75,17 +130,21 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarPro
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden"
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 lg:hidden cursor-pointer"
             aria-label="Close sidebar"
           >
             <XIcon className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Institution Info Badge */}
+        {/* Institution / Role Info Badge */}
         <div className="px-4 py-3 bg-slate-50/70 border-b border-slate-100">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Portal</div>
-          <div className="text-xs font-medium text-slate-700 truncate">{student.university}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+            {role.toUpperCase()} PORTAL
+          </div>
+          <div className="text-xs font-semibold text-slate-700 truncate mt-0.5">
+            {portalTitle}
+          </div>
         </div>
 
         {/* Navigation Items */}
@@ -96,11 +155,12 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarPro
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
                   setActiveTab(item.id);
                   onClose();
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                   isActive
                     ? "bg-indigo-50 text-indigo-700 font-semibold shadow-2xs"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -124,19 +184,23 @@ export function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarPro
           })}
         </nav>
 
-        {/* Student Mini Profile Footer */}
+        {/* Profile Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50/50">
           <div className="flex items-center space-x-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm ring-2 ring-indigo-200">
-              {student.avatarInitials}
+              {userInitials}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-slate-900 truncate">{student.name}</div>
-              <div className="text-[11px] text-slate-500 truncate">{student.studentId}</div>
+              <div className="text-xs font-semibold text-slate-900 truncate">{userDisplayName}</div>
+              <div className="text-[11px] text-slate-500 truncate">{currentUser ? currentUser.email : student.email}</div>
             </div>
           </div>
-          <div className="mt-2 text-[10px] text-slate-400 uppercase tracking-wider font-medium">
-            Student Role • Active
+          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+            <span>{roleLabel}</span>
+            <span className="flex items-center gap-1 text-emerald-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+              Active
+            </span>
           </div>
         </div>
       </aside>
