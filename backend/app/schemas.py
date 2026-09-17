@@ -2,8 +2,16 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 # ============================================================================
@@ -19,10 +27,28 @@ class UserRole(str, Enum):
 
 class UserRegisterRequest(BaseModel):
     """Schema for user registration."""
-    email: str = Field(..., min_length=5, max_length=255, description="Unique user email address")
-    password: str = Field(..., min_length=6, max_length=128, description="User password (minimum 6 characters)")
-    full_name: str = Field(..., min_length=1, max_length=255, description="Full name of the user")
-    role: UserRole = Field(default=UserRole.STUDENT, description="Account role: student, mentor, or admin")
+    email: str = Field(
+        ...,
+        min_length=5,
+        max_length=255,
+        description="Unique user email address",
+    )
+    password: str = Field(
+        ...,
+        min_length=6,
+        max_length=128,
+        description="User password (minimum 6 characters)",
+    )
+    full_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Full name of the user",
+    )
+    role: UserRole = Field(
+        default=UserRole.STUDENT,
+        description="Account role: student, mentor, or admin",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -96,17 +122,55 @@ class TokenResponse(BaseModel):
 
 class InternshipCreate(BaseModel):
     """Schema for creating a new internship."""
-    company_id: str = Field(..., description="ID of the company offering the internship")
-    mentor_id: Optional[str] = Field(default=None, description="Optional ID of the assigned mentor")
-    title: str = Field(..., min_length=2, max_length=255, description="Title of the internship")
-    domain: Optional[str] = Field(default=None, max_length=255, description="Domain/industry field (e.g. Cloud, AI)")
-    description: Optional[str] = Field(default=None, description="Detailed internship description")
-    location: Optional[str] = Field(default=None, max_length=255, description="Location or remote description")
-    mode: str = Field(default="Hybrid", description="Online, Offline, or Hybrid")
-    status: str = Field(default="Open", description="Open, Active, Closed, or Completed")
-    stipend: Optional[str] = Field(default=None, max_length=100, description="Stipend details (e.g. $1,800 / month)")
-    start_date: Optional[datetime] = Field(default=None, description="Internship start date")
-    end_date: Optional[datetime] = Field(default=None, description="Internship end date")
+    company_id: str = Field(
+        ...,
+        description="ID of the company offering the internship",
+    )
+    mentor_id: Optional[str] = Field(
+        default=None,
+        description="Optional ID of the assigned mentor",
+    )
+    title: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="Title of the internship",
+    )
+    domain: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Domain/industry field (e.g. Cloud, AI)",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Detailed internship description",
+    )
+    location: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Location or remote description",
+    )
+    mode: str = Field(
+        default="Hybrid",
+        description="Online, Offline, or Hybrid",
+    )
+    status: str = Field(
+        default="Open",
+        description="Open, Active, Closed, or Completed",
+    )
+    stipend: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Stipend details",
+    )
+    start_date: Optional[datetime] = Field(
+        default=None,
+        description="Internship start date",
+    )
+    end_date: Optional[datetime] = Field(
+        default=None,
+        description="Internship end date",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -155,20 +219,69 @@ class StudentInternshipItem(BaseModel):
 
 
 class StudentInternshipRegisterRequest(BaseModel):
-    """Schema for a student registering an off-campus or institutional internship placement."""
-    company_name: str = Field(..., min_length=2, max_length=255, description="Name of company or host organization")
-    internship_title: str = Field(..., min_length=2, max_length=255, description="Official role title of the internship")
-    domain: Optional[str] = Field(default=None, max_length=255, description="Domain or discipline (e.g. Cloud, AI, Web)")
-    start_date: Optional[datetime] = Field(default=None, description="Start date of the internship")
-    end_date: Optional[datetime] = Field(default=None, description="End date of the internship")
-    mode: str = Field(default="Hybrid", description="Online, Offline, or Hybrid")
-    location: Optional[str] = Field(default=None, max_length=255, description="Work location or Remote")
-    required_skills: List[str] = Field(default_factory=list, description="Key skills and technologies used")
-    description: Optional[str] = Field(default=None, description="Job description or scope of work")
-    mentor_name: Optional[str] = Field(default=None, max_length=255, description="Host supervisor or mentor name")
-    mentor_email: Optional[str] = Field(default=None, max_length=255, description="Supervisor official email")
-    mentor_phone: Optional[str] = Field(default=None, max_length=50, description="Supervisor contact phone")
-    stipend: Optional[str] = Field(default=None, max_length=100, description="Stipend information")
+    """Schema for a student registering an internship placement."""
+    company_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="Name of company or host organization",
+    )
+    internship_title: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="Official role title of the internship",
+    )
+    domain: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Domain or discipline",
+    )
+    start_date: Optional[datetime] = Field(
+        default=None,
+        description="Start date of the internship",
+    )
+    end_date: Optional[datetime] = Field(
+        default=None,
+        description="End date of the internship",
+    )
+    mode: str = Field(
+        default="Hybrid",
+        description="Online, Offline, or Hybrid",
+    )
+    location: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Work location or Remote",
+    )
+    required_skills: List[str] = Field(
+        default_factory=list,
+        description="Key skills and technologies used",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Job description or scope of work",
+    )
+    mentor_name: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Host supervisor or mentor name",
+    )
+    mentor_email: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Supervisor official email",
+    )
+    mentor_phone: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="Supervisor contact phone",
+    )
+    stipend: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Stipend information",
+    )
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
@@ -179,8 +292,14 @@ class StudentInternshipRegisterRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_dates(self):
-        if self.start_date and self.end_date and self.end_date < self.start_date:
-            raise ValueError("end_date must be greater than or equal to start_date")
+        if (
+            self.start_date
+            and self.end_date
+            and self.end_date < self.start_date
+        ):
+            raise ValueError(
+                "end_date must be greater than or equal to start_date"
+            )
         return self
 
     model_config = ConfigDict(
@@ -193,7 +312,11 @@ class StudentInternshipRegisterRequest(BaseModel):
                 "end_date": "2026-12-01T00:00:00",
                 "mode": "Hybrid",
                 "location": "Seattle, WA / Remote",
-                "required_skills": ["Python", "FastAPI", "Docker"],
+                "required_skills": [
+                    "Python",
+                    "FastAPI",
+                    "Docker",
+                ],
                 "description": "Designing and deploying backend services.",
                 "mentor_name": "Dr. Marcus Vance",
                 "mentor_email": "m.vance@cloudscale.io",
@@ -231,15 +354,52 @@ class StudentProfileResponse(BaseModel):
 
 class StudentProfileUpdateRequest(BaseModel):
     """Schema for updating student profile information."""
-    name: Optional[str] = Field(default=None, min_length=2, max_length=255, description="Full name of the student")
-    phone: Optional[str] = Field(default=None, max_length=50, description="Contact phone number")
-    college: Optional[str] = Field(default=None, max_length=255, description="College or school name")
-    university: Optional[str] = Field(default=None, max_length=255, description="University name")
-    department: Optional[str] = Field(default=None, max_length=255, description="Academic department")
-    year_of_study: Optional[str] = Field(default=None, max_length=100, description="Current academic year / cohort")
-    gpa: Optional[float] = Field(default=None, ge=0.0, le=10.0, description="Grade point average")
-    resume_url: Optional[str] = Field(default=None, max_length=500, description="URL or filename of student resume")
-    skills: Optional[List[str]] = Field(default=None, description="List of skill names")
+    name: Optional[str] = Field(
+        default=None,
+        min_length=2,
+        max_length=255,
+        description="Full name of the student",
+    )
+    phone: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="Contact phone number",
+    )
+    college: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="College or school name",
+    )
+    university: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="University name",
+    )
+    department: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Academic department",
+    )
+    year_of_study: Optional[str] = Field(
+        default=None,
+        max_length=100,
+        description="Current academic year / cohort",
+    )
+    gpa: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=10.0,
+        description="Grade point average",
+    )
+    resume_url: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="URL or filename of student resume",
+    )
+    skills: Optional[List[str]] = Field(
+        default=None,
+        description="List of skill names",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -251,12 +411,17 @@ class StudentProfileUpdateRequest(BaseModel):
                 "department": "Department of Computer Science & Engineering",
                 "year_of_study": "Final Year (Semester 7 - 2026)",
                 "gpa": 3.90,
-                "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "Git & GitHub", "React"],
+                "skills": [
+                    "Python",
+                    "FastAPI",
+                    "PostgreSQL",
+                    "Docker",
+                    "Git & GitHub",
+                    "React",
+                ],
             }
         }
     )
-
-
 
 
 # ============================================================================
@@ -265,15 +430,47 @@ class StudentProfileUpdateRequest(BaseModel):
 
 class ProgressReportCreate(BaseModel):
     """Schema for submitting a weekly progress report."""
-    student_id: str = Field(..., description="ID of the student submitting the report")
-    week_number: int = Field(..., ge=1, description="Week number for the progress report (must be >= 1)")
-    title: Optional[str] = Field(default=None, max_length=255, description="Optional title for the weekly log")
-    summary: Optional[str] = Field(default=None, description="Summary of work completed during the week")
-    hours_logged: float = Field(default=0.0, ge=0.0, description="Total hours logged during this week")
-    status: str = Field(default="Pending Submission", description="Report status: Pending Submission, Under Review, Approved")
-    mentor_feedback: Optional[str] = Field(default=None, description="Optional mentor feedback")
-    mentor_score: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Score assigned by mentor (1.0 to 5.0)")
-    submission_date: Optional[datetime] = Field(default=None, description="Date of report submission")
+    student_id: str = Field(
+        ...,
+        description="ID of the student submitting the report",
+    )
+    week_number: int = Field(
+        ...,
+        ge=1,
+        description="Week number for the progress report",
+    )
+    title: Optional[str] = Field(
+        default=None,
+        max_length=255,
+        description="Optional title for the weekly log",
+    )
+    summary: Optional[str] = Field(
+        default=None,
+        description="Summary of work completed during the week",
+    )
+    hours_logged: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Total hours logged during this week",
+    )
+    status: str = Field(
+        default="Pending Submission",
+        description="Report status",
+    )
+    mentor_feedback: Optional[str] = Field(
+        default=None,
+        description="Optional mentor feedback",
+    )
+    mentor_score: Optional[float] = Field(
+        default=None,
+        ge=1.0,
+        le=5.0,
+        description="Score assigned by mentor",
+    )
+    submission_date: Optional[datetime] = Field(
+        default=None,
+        description="Date of report submission",
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -331,11 +528,27 @@ class MentorProfileResponse(BaseModel):
 
 class MentorProfileUpdateRequest(BaseModel):
     """Schema for updating mentor profile."""
-    name: Optional[str] = Field(default=None, min_length=2, max_length=255)
-    company_name: Optional[str] = Field(default=None, max_length=255)
-    job_title: Optional[str] = Field(default=None, max_length=255)
-    department: Optional[str] = Field(default=None, max_length=255)
-    phone: Optional[str] = Field(default=None, max_length=50)
+    name: Optional[str] = Field(
+        default=None,
+        min_length=2,
+        max_length=255,
+    )
+    company_name: Optional[str] = Field(
+        default=None,
+        max_length=255,
+    )
+    job_title: Optional[str] = Field(
+        default=None,
+        max_length=255,
+    )
+    department: Optional[str] = Field(
+        default=None,
+        max_length=255,
+    )
+    phone: Optional[str] = Field(
+        default=None,
+        max_length=50,
+    )
 
 
 class MentorInternItem(BaseModel):
@@ -361,17 +574,36 @@ class MentorInternItem(BaseModel):
 
 class ReportReviewRequest(BaseModel):
     """Schema for mentor reviewing a weekly progress report."""
-    status: str = Field(..., description="Approved, Needs Revision, or Rejected")
-    mentor_feedback: Optional[str] = Field(default=None, description="Detailed qualitative feedback")
-    mentor_score: Optional[float] = Field(default=None, ge=1.0, le=5.0, description="Numerical score from 1.0 to 5.0")
+    status: str = Field(
+        ...,
+        description="Approved, Needs Revision, or Rejected",
+    )
+    mentor_feedback: Optional[str] = Field(
+        default=None,
+        description="Detailed qualitative feedback",
+    )
+    mentor_score: Optional[float] = Field(
+        default=None,
+        ge=1.0,
+        le=5.0,
+        description="Numerical score from 1.0 to 5.0",
+    )
 
 
 class EvaluationCreate(BaseModel):
     """Schema for creating a student evaluation."""
     student_id: str
     internship_id: str
-    evaluation_type: str = Field(default="Midterm", description="Midterm, Final, or Monthly")
-    rating: float = Field(..., ge=1.0, le=5.0, description="Rating score 1.0 to 5.0")
+    evaluation_type: str = Field(
+        default="Midterm",
+        description="Midterm, Final, or Monthly",
+    )
+    rating: float = Field(
+        ...,
+        ge=1.0,
+        le=5.0,
+        description="Rating score 1.0 to 5.0",
+    )
     comments: Optional[str] = None
     recommendation: Optional[str] = None
 
@@ -396,9 +628,16 @@ class TaskCreateRequest(BaseModel):
     """Schema for creating an intern task."""
     internship_id: str
     student_id: str
-    title: str = Field(..., min_length=2, max_length=255)
+    title: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+    )
     description: Optional[str] = None
-    category: Optional[str] = Field(default="General", max_length=100)
+    category: Optional[str] = Field(
+        default="General",
+        max_length=100,
+    )
     due_date: Optional[datetime] = None
 
 
@@ -452,7 +691,10 @@ class AdminApplicationItem(BaseModel):
 
 class ApplicationStatusUpdateRequest(BaseModel):
     """Schema for admin updating an application's status."""
-    status: str = Field(..., description="Approved, Rejected, or Pending")
+    status: str = Field(
+        ...,
+        description="Approved, Rejected, or Pending",
+    )
 
 
 class AdminMentorItem(BaseModel):
@@ -506,10 +748,65 @@ class AdminInternshipItem(BaseModel):
 class AdminReportAlertItem(BaseModel):
     """Schema representing reports & alerts in admin portal."""
     id: str
-    type: str  # "Report" or "Alert"
+    type: str
     title: str
     student_name: str
     internship_title: Optional[str] = None
     status: str
     severity: str = "Info"
     date: datetime
+
+
+# ============================================================================
+# ALERT SCHEMAS
+# ============================================================================
+
+class AlertResponse(BaseModel):
+    """Schema representing an early-intervention attention alert."""
+    id: str
+    student_id: str
+    student_name: Optional[str] = None
+    internship_id: Optional[str] = None
+    title: str
+    message: str
+    severity: str
+    is_read: bool
+    is_resolved: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AlertResolveRequest(BaseModel):
+    """Schema for resolving an alert."""
+    is_resolved: bool = True
+
+
+# ============================================================================
+# INTELLIGENCE EXTENDED SCHEMAS
+# ============================================================================
+
+class QualityScoreResult(BaseModel):
+    """Explainable Internship Quality Score."""
+    quality_score: float
+    breakdown: Dict[str, Any]
+    explanation: str
+
+
+class CompletionReadinessResult(BaseModel):
+    """Internship Completion Readiness evaluation."""
+    status: str
+    completion_score: float
+    pending_items: List[str]
+    summary: str
+
+
+class GrowthAnalyticsResult(BaseModel):
+    """Student Growth Analytics over time."""
+    has_sufficient_data: bool
+    message: Optional[str] = None
+    weeks: List[Dict[str, Any]] = Field(default_factory=list)
+    skills_practiced: List[str] = Field(default_factory=list)
+    average_mentor_score: Optional[float] = None
+    reports_count: int = 0
+    tasks_completed_count: int = 0
