@@ -1,4 +1,4 @@
-﻿# Smart Internship Management
+﻿
 
  # Smart Internship Management System
 
