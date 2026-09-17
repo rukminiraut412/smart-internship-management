@@ -1,4 +1,4 @@
-"""Pydantic schemas for request validation and response serialization."""
+﻿"""Pydantic schemas for request validation and response serialization."""
 
 from datetime import datetime
 from enum import Enum
@@ -623,6 +623,52 @@ class EvaluationResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+
+# ============================================================================
+# TASK MANAGEMENT SCHEMAS
+# ============================================================================
+
+class TaskCreate(BaseModel):
+    """Schema for creating a new task."""
+    internship_id: str
+    student_id: str
+    mentor_id: Optional[str] = None
+    title: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="Task title",
+    )
+    description: Optional[str] = None
+    category: Optional[str] = Field(
+        default="Development",
+        max_length=100,
+    )
+    status: Optional[str] = Field(
+        default="Pending",
+        description="Pending, In Progress, or Completed",
+    )
+    due_date: Optional[datetime] = None
+
+
+class TaskUpdate(BaseModel):
+    """Schema for updating an existing task."""
+    title: Optional[str] = Field(
+        default=None,
+        min_length=2,
+        max_length=255,
+    )
+    description: Optional[str] = None
+    category: Optional[str] = Field(
+        default=None,
+        max_length=100,
+    )
+    status: Optional[str] = Field(
+        default=None,
+        description="Pending, In Progress, or Completed",
+    )
+    due_date: Optional[datetime] = None
 
 class TaskCreateRequest(BaseModel):
     """Schema for creating an intern task."""
