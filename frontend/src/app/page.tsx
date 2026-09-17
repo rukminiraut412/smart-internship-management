@@ -209,41 +209,81 @@ export default function SmartInternshipApp() {
           const me = await authApi.getMe();
           const studentId = me.student_id || me.id;
 
+          // --------------------------------------------------
+          // FIX:
+          // Immediately use authenticated backend user details.
+          // This prevents the UI from showing demo student data
+          // such as "Alex Rivera" after a real student logs in.
+          // --------------------------------------------------
+
+          setCurrentUser(me);
+
+          setStudentProfile((prev) => ({
+            ...prev,
+            name: me.full_name || prev.name,
+            email: me.email || prev.email,
+            avatarInitials: me.full_name
+              ? me.full_name
+                  .split(" ")
+                  .filter(Boolean)
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()
+              : prev.avatarInitials,
+          }));
+
+          // --------------------------------------------------
+          // Get complete student profile from backend
+          // --------------------------------------------------
+
           const backendProfile =
             await studentsApi.getProfile(studentId);
 
           if (backendProfile) {
             setStudentProfile((prev) => ({
               ...prev,
+
               name:
                 backendProfile.name ||
-                me.full_name,
+                me.full_name ||
+                prev.name,
+
               email:
                 backendProfile.email ||
-                me.email,
+                me.email ||
+                prev.email,
+
               studentId:
                 backendProfile.student_id_number ||
                 prev.studentId,
+
               phone:
                 backendProfile.phone ||
                 prev.phone,
+
               college:
                 backendProfile.college ||
                 prev.college,
+
               university:
                 backendProfile.university ||
                 prev.university,
+
               department:
                 backendProfile.department ||
                 prev.department,
+
               year:
                 backendProfile.year_of_study ||
                 prev.year,
+
               gpa:
                 backendProfile.gpa !== null &&
                 backendProfile.gpa !== undefined
                   ? backendProfile.gpa
                   : prev.gpa,
+
               skills:
                 backendProfile.skills &&
                 backendProfile.skills.length > 0
@@ -251,6 +291,10 @@ export default function SmartInternshipApp() {
                   : prev.skills,
             }));
           }
+
+          // --------------------------------------------------
+          // Get internships registered by this student
+          // --------------------------------------------------
 
           const studentInternships =
             await studentsApi.getInternships(studentId);
@@ -263,9 +307,14 @@ export default function SmartInternshipApp() {
               studentInternships[0].internship;
           }
         } catch {
-          // Keep defaults
+          // Keep defaults if student-specific backend
+          // data is unavailable.
         }
       }
+
+      // --------------------------------------------------
+      // Fallback: Get available internships
+      // --------------------------------------------------
 
       if (!primary) {
         const backendInternships =
@@ -278,6 +327,10 @@ export default function SmartInternshipApp() {
           primary = backendInternships[0];
         }
       }
+
+      // --------------------------------------------------
+      // Load Primary Internship
+      // --------------------------------------------------
 
       if (primary) {
         setActiveInternshipId(primary.id);
@@ -1001,6 +1054,7 @@ export default function SmartInternshipApp() {
                   }
                   onRegistrationSuccess={async () => {
                     await loadStudentData();
+
                     setActiveTab(
                       "Dashboard"
                     );
