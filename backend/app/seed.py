@@ -186,3 +186,8 @@ def seed_demo_data() -> None:
         print(f"[Seed Warning] Demo seed initialization: {e}")
     finally:
         db.close()
+
+
+if __name__ == "__main__":
+    seed_demo_data()
+    print("Demo data seeded successfully.")

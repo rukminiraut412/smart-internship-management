@@ -61,7 +61,7 @@ def register(
 
     # Initialize connected profile based on role
     if payload.role == UserRole.STUDENT:
-        student_profile = Student(user_id=new_user.id)
+        student_profile = Student(user_id=new_user.id, student_id_number=f"STU-{new_user.id[:8].upper()}")
         db.add(student_profile)
     elif payload.role == UserRole.MENTOR:
         mentor_profile = Mentor(user_id=new_user.id)

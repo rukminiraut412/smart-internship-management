@@ -62,6 +62,14 @@ class User(Base):
     student = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mentor = relationship("Mentor", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
+    @property
+    def student_id(self) -> Optional[str]:
+        return self.student.id if self.student else None
+
+    @property
+    def mentor_id(self) -> Optional[str]:
+        return self.mentor.id if self.mentor else None
+
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
 
