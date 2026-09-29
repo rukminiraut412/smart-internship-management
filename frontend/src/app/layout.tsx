@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Smart Internship Management and Monitoring System",
@@ -14,8 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full bg-slate-50 antialiased">
       <body className="min-h-full flex flex-col font-sans text-slate-900 bg-slate-50">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
 }
+

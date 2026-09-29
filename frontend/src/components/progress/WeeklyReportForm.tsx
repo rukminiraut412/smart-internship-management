@@ -57,27 +57,16 @@ export function WeeklyReportForm({
     setWeekNumber(initialWeek);
   }
 
-  const [startDate, setStartDate] = useState<string>("2026-09-13");
-  const [endDate, setEndDate] = useState<string>("2026-09-19");
-  const [hoursLogged, setHoursLogged] = useState<number>(20);
-  const [tasksCompleted, setTasksCompleted] = useState<string>(
-    "• Wrote comprehensive pytest integration test suite with synthetic fixtures\n• Validated Redis cache invalidation hooks on simulated telemetry updates\n• Monitored API latency benchmarks under 200 concurrent simulated requests"
-  );
-  const [workDescription, setWorkDescription] = useState<string>(
-    "Authored integration test modules for telemetry endpoints in FastAPI, ensuring full schema compliance and >85% test coverage. Integrated Docker compose testing environment with isolated PostgreSQL and Redis instances for continuous local testing."
-  );
-  const [skillsLearned, setSkillsLearned] = useState<string[]>([
-    "Pytest Fixtures",
-    "Redis Caching",
-    "Integration Testing",
-  ]);
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [hoursLogged, setHoursLogged] = useState<number>(0);
+  const [tasksCompleted, setTasksCompleted] = useState<string>("");
+  const [workDescription, setWorkDescription] = useState<string>("");
+  const [skillsLearned, setSkillsLearned] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState<string>("");
-  const [challengesFaced, setChallengesFaced] = useState<string>(
-    "Race conditions during concurrent async database session disposal in pytest runner; resolved by isolating event loop fixtures across test modules."
-  );
-  const [nextWeekPlan, setNextWeekPlan] = useState<string>(
-    "Benchmark Redis caching hit-ratio under burst traffic and draft mid-term technical architecture presentation for mentor review."
-  );
+  const [challengesFaced, setChallengesFaced] = useState<string>("");
+  const [nextWeekPlan, setNextWeekPlan] = useState<string>("");
+
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);

@@ -38,16 +38,23 @@ export function MentorDashboardView({
             <div className="flex items-center space-x-2 text-[11px] font-medium text-slate-400 mb-0.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
               <span>Industry Mentor Workspace</span>
-              <span>•</span>
-              <span className="text-slate-300 truncate">{profile?.company_name || "CloudScale Distributed Systems"}</span>
+              {profile?.company_name && (
+                <>
+                  <span>•</span>
+                  <span className="text-slate-300 truncate">{profile.company_name}</span>
+                </>
+              )}
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
               Welcome back, {profile?.name || "Mentor"}
             </h1>
-            <p className="text-xs text-slate-300 mt-1">
-              {profile?.job_title || "Staff Systems Architect"} • {profile?.department || "Platform Infrastructure"}
-            </p>
+            {(profile?.job_title || profile?.department) && (
+              <p className="text-xs text-slate-300 mt-1">
+                {[profile?.job_title, profile?.department].filter(Boolean).join(" • ")}
+              </p>
+            )}
           </div>
+
 
           <div className="flex items-center gap-2">
             <button
@@ -92,7 +99,7 @@ export function MentorDashboardView({
             </div>
             <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
               <span>Cohort Term</span>
-              <span className="font-semibold text-indigo-600">Fall 2026</span>
+              <span className="font-semibold text-indigo-600">Active Cohort</span>
             </div>
           </div>
 
@@ -161,12 +168,12 @@ export function MentorDashboardView({
                   <p className="text-xs text-slate-500">Mentored Roles</p>
                 </div>
               </div>
-              <span className="text-xl font-bold text-emerald-600">1</span>
+              <span className="text-xl font-bold text-emerald-600">{interns.length > 0 ? new Set(interns.map((i) => i.internship_title)).size : 0}</span>
             </div>
             <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
               <span>Avg Progression</span>
               <span className="font-semibold text-slate-800">
-                {interns.length > 0 ? `${interns[0].progress_pct}%` : "33%"}
+                {interns.length > 0 ? `${Math.round(interns.reduce((sum, i) => sum + (i.progress_pct || 0), 0) / interns.length)}%` : "—"}
               </span>
             </div>
           </div>
@@ -257,14 +264,20 @@ export function MentorDashboardView({
           </button>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-          {interns.map((intern) => (
-            <div key={intern.student_id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">{intern.student_name}</h4>
-                  <p className="text-[11px] text-slate-500">{intern.student_id_number} • {intern.department}</p>
-                </div>
+        {interns.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            No assigned interns currently in your cohort.
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {interns.map((intern) => (
+              <div key={intern.student_id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">{intern.student_name}</h4>
+                    <p className="text-[11px] text-slate-500">{intern.student_id_number} • {intern.department}</p>
+                  </div>
+
                 <span
                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     intern.attention_status === "ON_TRACK"
@@ -289,21 +302,24 @@ export function MentorDashboardView({
                 </div>
               </div>
 
-              <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Reports: <strong>{intern.reports_submitted}/{intern.total_reports}</strong></span>
-                <span>Tasks: <strong>{intern.tasks_completed}/{intern.total_tasks}</strong></span>
-                <button
-                  type="button"
-                  onClick={() => onNavigateTab("My Interns")}
-                  className="font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                >
-                  Open Details →
-                </button>
+                <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Reports: <strong>{intern.reports_submitted}/{intern.total_reports}</strong></span>
+                  <span>Tasks: <strong>{intern.tasks_completed}/{intern.total_tasks}</strong></span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab("My Interns")}
+                    className="font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                  >
+                    Open Details →
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
+        )}
       </section>
+
     </div>
   );
 }

@@ -196,7 +196,7 @@ export function StudentProfileView({
             resume: {
               fileName: res.resume_url
                 ? res.resume_url.split("/").pop() ||
-                  "Resume_2026.pdf"
+                  "Resume.pdf"
                 : initialProfile.resume.fileName,
 
               status:

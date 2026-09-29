@@ -80,7 +80,7 @@ export function AdminReportsAlertsView({ items }: Props) {
                   </div>
 
                   <p className="text-xs text-slate-600 mt-0.5">
-                    Candidate: <strong>{item.student_name}</strong> • Placement: {item.internship_title || "Backend Engineering"}
+                    Candidate: <strong>{item.student_name}</strong> • Placement: {item.internship_title || "—"}
                   </p>
                   <div className="text-[11px] text-slate-400 mt-1">
                     Timestamp: {item.date ? item.date.split("T")[0] : "Recently"} • Status: {item.status}

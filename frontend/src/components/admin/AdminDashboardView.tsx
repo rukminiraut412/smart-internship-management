@@ -108,7 +108,7 @@ export function AdminDashboardView({
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
               <span>Institutional Administration Console</span>
               <span>•</span>
-              <span className="text-slate-300">University Cohort 2026</span>
+              <span className="text-slate-300">Internship Management System</span>
             </div>
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
               System Operations Overview
@@ -204,7 +204,7 @@ export function AdminDashboardView({
               >
                 <div>
                   <div className="text-xs font-bold text-slate-900">
-                    {app.student_name} ({app.student_id_number || "STU-2026"})
+                    {app.student_name} ({app.student_id_number || "N/A"})
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     Applied for <strong>{app.internship_title}</strong> at <strong>{app.company_name}</strong>

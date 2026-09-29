@@ -74,18 +74,19 @@ export function AdminStudentsView({ students }: Props) {
                     <div className="text-[11px] text-slate-400">{s.email}</div>
                   </td>
                   <td className="px-5 py-4 font-mono font-medium text-slate-700">
-                    {s.student_id_number || "STU-2026-8842"}
+                    {s.student_id_number || "—"}
                   </td>
                   <td className="px-5 py-4">
-                    <div className="font-medium text-slate-800">{s.department || "Computer Science"}</div>
-                    <div className="text-[11px] text-slate-400">{s.year_of_study || "Final Year"}</div>
+                    <div className="font-medium text-slate-800">{s.department || "—"}</div>
+                    {s.year_of_study && <div className="text-[11px] text-slate-400">{s.year_of_study}</div>}
                   </td>
                   <td className="px-5 py-4">
-                    <span className="font-bold text-slate-800">{s.gpa ? s.gpa.toFixed(2) : "3.84"}</span>
+                    <span className="font-bold text-slate-800">{typeof s.gpa === "number" ? s.gpa.toFixed(2) : "—"}</span>
                   </td>
                   <td className="px-5 py-4">
-                    <span className="text-indigo-600 font-medium">{s.active_internship_title}</span>
+                    <span className="text-indigo-600 font-medium">{s.active_internship_title || "None"}</span>
                   </td>
+
                   <td className="px-5 py-4 text-right">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${

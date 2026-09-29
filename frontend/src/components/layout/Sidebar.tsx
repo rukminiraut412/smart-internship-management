@@ -13,7 +13,6 @@ import {
   ClipboardCheckIcon,
   ShieldExclamationIcon,
 } from "@/components/common/Icons";
-import { mockStudentData } from "@/data/mockData";
 import { UserProfile } from "@/lib/api";
 
 export interface NavItem {
@@ -124,7 +123,14 @@ export function Sidebar({
   role = "student",
   currentUser,
 }: SidebarProps) {
-  const { student } = mockStudentData;
+  const userDisplayName = currentUser?.full_name || "";
+
+  const userInitials = userDisplayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   const navItems =
     role === "mentor"
@@ -140,23 +146,13 @@ export function Sidebar({
       ? "Institutional Admin Portal"
       : "Student Internship Portal";
 
-  const userDisplayName = currentUser
-    ? currentUser.full_name
-    : student.name;
-
-  const userInitials = userDisplayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
   const roleLabel =
     role === "mentor"
       ? "Industry Mentor"
       : role === "admin"
       ? "System Administrator"
       : "Student";
+
 
   return (
     <>
@@ -274,9 +270,7 @@ export function Sidebar({
               </div>
 
               <div className="text-[11px] text-slate-500 truncate">
-                {currentUser
-                  ? currentUser.email
-                  : student.email}
+              {currentUser?.email || ""}
               </div>
             </div>
           </div>

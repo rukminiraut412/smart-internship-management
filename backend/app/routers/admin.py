@@ -54,6 +54,11 @@ def _require_admin(user: User) -> None:
     description="Retrieve aggregate system statistics for students, internships, mentors, and applications.",
 )
 @router.get(
+    "/overview",
+    response_model=AdminStatsResponse,
+    summary="Get admin dashboard KPIs (overview alias)",
+)
+@router.get(
     "",
     response_model=AdminStatsResponse,
     summary="Get admin dashboard KPIs (root alias)",

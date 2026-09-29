@@ -15,6 +15,7 @@ from app.models import (
     Skill,
     Student,
     StudentSkill,
+    Task,
     User,
 )
 from app.schemas import (
@@ -23,6 +24,7 @@ from app.schemas import (
     StudentInternshipRegisterRequest,
     StudentProfileResponse,
     StudentProfileUpdateRequest,
+    TaskResponse,
 )
 from app.security import get_current_user
 
@@ -46,6 +48,7 @@ def _build_student_profile_response(
         id=student.id,
         user_id=student.user.id if student.user else student.user_id,
         email=student.user.email if student.user else "",
+        name=student.user.full_name if student.user else "",
         full_name=student.user.full_name if student.user else "",
         student_id_number=(
             student.student_id_number
@@ -303,6 +306,7 @@ def get_student_profile(
         id=student.id,
         user_id=student.user_id,
         email=student.user.email if student.user else "",
+        name=student.user.full_name if student.user else "",
         full_name=(
             student.user.full_name
             if student.user
@@ -692,3 +696,74 @@ def register_student_internship(
     response_data.company_name = company.name
 
     return response_data
+
+
+@router.post(
+    "/{student_id}/internships/register",
+    response_model=StudentInternshipItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register student internship (returns StudentInternshipItem)",
+)
+def register_student_internship_item(
+    student_id: str,
+    payload: StudentInternshipRegisterRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Register internship and return StudentInternshipItem."""
+    internship_resp = register_student_internship(
+        student_id=student_id,
+        payload=payload,
+        current_user=current_user,
+        db=db,
+    )
+    student = (
+        db.query(Student)
+        .filter((Student.id == student_id) | (Student.user_id == student_id))
+        .first()
+    )
+    app_rec = (
+        db.query(Application)
+        .filter(
+            Application.student_id == student.id,
+            Application.internship_id == internship_resp.id,
+        )
+        .first()
+    )
+    return StudentInternshipItem(
+        application_id=app_rec.id if app_rec else "",
+        application_status=app_rec.status if app_rec else "Approved",
+        applied_at=app_rec.applied_at if app_rec else datetime.utcnow(),
+        internship=internship_resp,
+    )
+
+
+@router.get(
+    "/{student_id}/tasks",
+    response_model=List[TaskResponse],
+    summary="Get student's tasks",
+    description="Retrieve all tasks assigned to the student.",
+)
+def get_student_tasks(
+    student_id: str,
+    db: Session = Depends(get_db),
+):
+    """Retrieve all tasks assigned to the student."""
+    student = (
+        db.query(Student)
+        .filter((Student.id == student_id) | (Student.user_id == student_id))
+        .first()
+    )
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID '{student_id}' not found",
+        )
+
+    tasks = (
+        db.query(Task)
+        .filter(Task.student_id == student.id)
+        .order_by(Task.created_at.desc())
+        .all()
+    )
+    return tasks

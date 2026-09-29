@@ -17,7 +17,7 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 from app.models import Company, Internship, ProgressReport, Student, Task, User
-from app.security import hash_password
+from app.security import create_access_token, hash_password
 
 test_engine = create_engine(
     "sqlite:///:memory:",
@@ -101,7 +101,7 @@ def test_student_registration_and_profile_workflow():
     assert set(updated["skills"]) == {"Python", "FastAPI", "React", "PostgreSQL"}
 
     # 5. Verify persistence by re-fetching
-    fetch_res = client.get(f"/api/students/{student_id}")
+    fetch_res = client.get(f"/api/students/{student_id}", headers=headers)
     assert fetch_res.status_code == 200
     fetched = fetch_res.json()
     assert fetched["gpa"] == 3.92
@@ -122,6 +122,15 @@ def test_internship_registration_endpoint():
     )
     student_id = reg.json()["student_id"]
 
+    # 2. Login to obtain access token
+    login_res = client.post(
+        "/api/auth/login",
+        json={"email": "dev.student@test.edu", "password": "Password123!"},
+    )
+    assert login_res.status_code == 200
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Register internship
     payload = {
         "company_name": "Apex Analytics",
@@ -133,7 +142,11 @@ def test_internship_registration_endpoint():
         "stipend": "$2,200 / month",
         "required_skills": ["Python", "SQL", "Docker", "Kafka"],
     }
-    reg_res = client.post(f"/api/students/{student_id}/internships/register", json=payload)
+    reg_res = client.post(
+        f"/api/students/{student_id}/internships/register",
+        json=payload,
+        headers=headers,
+    )
     assert reg_res.status_code == 201
     item = reg_res.json()
     assert item["application_status"] == "Approved"
@@ -141,7 +154,11 @@ def test_internship_registration_endpoint():
     assert item["internship"]["company_name"] == "Apex Analytics"
 
     # Verify duplicate registration prevention
-    dup_res = client.post(f"/api/students/{student_id}/internships/register", json=payload)
+    dup_res = client.post(
+        f"/api/students/{student_id}/internships/register",
+        json=payload,
+        headers=headers,
+    )
     assert dup_res.status_code == 400
 
     # Verify student internships listing
@@ -229,10 +246,15 @@ def test_mentor_portal_review_and_assigned_interns():
     db.commit()
     r_id = report.id
     m_id = mentor.id
+    m_uid = m_user.id
+    m_uemail = m_user.email
     db.close()
 
     # Mentor views interns
-    interns_res = client.get(f"/api/mentors/{m_id}/interns")
+    m_token = create_access_token({"sub": m_uid, "email": m_uemail, "role": "mentor"})
+    m_headers = {"Authorization": f"Bearer {m_token}"}
+
+    interns_res = client.get(f"/api/mentors/{m_id}/interns", headers=m_headers)
     assert interns_res.status_code == 200
     interns = interns_res.json()
     assert len(interns) >= 1
@@ -242,6 +264,7 @@ def test_mentor_portal_review_and_assigned_interns():
     rev_res = client.put(
         f"/api/mentors/reports/{r_id}/review",
         json={"mentor_feedback": "Great progress on the database schema.", "mentor_score": 4.8},
+        headers=m_headers,
     )
     assert rev_res.status_code == 200
     assert rev_res.json()["mentor_score"] == 4.8
@@ -272,15 +295,32 @@ def test_admin_portal_workflows():
     app_id = app_rec.id
     db.close()
 
+    # Create admin user for authorized admin portal tests
+    admin_user = User(
+        email="admin.flow@test.edu",
+        hashed_password=hash_password("Password123!"),
+        full_name="Admin Flow",
+        role="admin",
+        is_active=True,
+    )
+    db.add(admin_user)
+    db.commit()
+    admin_token = create_access_token({"sub": admin_user.id, "email": admin_user.email, "role": "admin"})
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
     # Admin overview
-    overview_res = client.get("/api/admin/overview")
+    overview_res = client.get("/api/admin/overview", headers=admin_headers)
     assert overview_res.status_code == 200
     data = overview_res.json()
     assert data["total_students"] >= 1
     assert data["pending_applications"] >= 1
 
     # Admin approves application
-    patch_res = client.patch(f"/api/admin/applications/{app_id}", json={"status": "Approved"})
+    patch_res = client.patch(
+        f"/api/admin/applications/{app_id}",
+        json={"status": "Approved"},
+        headers=admin_headers,
+    )
     assert patch_res.status_code == 200
     assert patch_res.json()["status"] == "Approved"
 

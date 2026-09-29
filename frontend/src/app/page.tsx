@@ -1,1281 +1,193 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopNavbar } from "@/components/layout/TopNavbar";
-import { AuthModal } from "@/components/auth/AuthModal";
-
-// Student Portal Components
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { InternshipStatusCard } from "@/components/dashboard/InternshipStatusCard";
-import { ProgressCard } from "@/components/dashboard/ProgressCard";
-import { ReportsSubmittedCard } from "@/components/dashboard/ReportsSubmittedCard";
-import { InternshipIntelligenceCard } from "@/components/dashboard/InternshipIntelligenceCard";
-import { CurrentInsightSection } from "@/components/dashboard/CurrentInsightSection";
-import { MyInternshipView } from "@/components/internship/MyInternshipView";
-import { ProgressAndReportsView } from "@/components/progress/ProgressAndReportsView";
-import { IntelligenceView } from "@/components/intelligence/IntelligenceView";
-import { StudentProfileView } from "@/components/profile/StudentProfileView";
-
-// Mentor Portal Components
-import { MentorDashboardView } from "@/components/mentor/MentorDashboardView";
-import { MentorInternsView } from "@/components/mentor/MentorInternsView";
-import { MentorWeeklyReportsView } from "@/components/mentor/MentorWeeklyReportsView";
-import { MentorTasksView } from "@/components/mentor/MentorTasksView";
-import { MentorEvaluationsView } from "@/components/mentor/MentorEvaluationsView";
-import { MentorProfileView } from "@/components/mentor/MentorProfileView";
-
-// Admin Portal Components
-import { AdminDashboardView } from "@/components/admin/AdminDashboardView";
-import { AdminApplicationsView } from "@/components/admin/AdminApplicationsView";
-import { AdminMentorsView } from "@/components/admin/AdminMentorsView";
-import { AdminStudentsView } from "@/components/admin/AdminStudentsView";
-import { AdminInternshipsView } from "@/components/admin/AdminInternshipsView";
-import { AdminReportsAlertsView } from "@/components/admin/AdminReportsAlertsView";
-import { AdminProfileView } from "@/components/admin/AdminProfileView";
-
-// Data & APIs
-import {
-  mockStudentData,
-  StudentProfile,
-  InternshipDetails,
-  AttentionStatus,
-  ReportItem,
-  SkillMatchItem,
-  WeeklyReport,
-  ReportStatus,
-} from "@/data/mockData";
-
-import {
-  adminApi,
-  AdminApplicationItem,
-  AdminInternshipItem,
-  AdminMentorItem,
-  AdminReportAlertItem,
-  AdminStats,
-  AdminStudentItem,
-  authApi,
-  authStorage,
-  BackendInternship,
-  BackendProgressReport,
-  EvaluationItem,
-  healthApi,
-  intelligenceApi,
-  internshipsApi,
-  MentorInternItem,
-  MentorProfile,
-  mentorsApi,
-  studentsApi,
-  TaskItem,
-  UserProfile,
-} from "@/lib/api";
-
-export default function SmartInternshipApp() {
-  const [activeTab, setActiveTab] = useState<string>("Dashboard");
-
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] =
-    useState<boolean>(false);
-
-  const [isAuthModalOpen, setIsAuthModalOpen] =
-    useState<boolean>(false);
-
-  // --------------------------------------------------
-  // Backend & authentication
-  // --------------------------------------------------
-
-  const [backendConnected, setBackendConnected] =
-    useState<boolean>(false);
-
-  const [currentUser, setCurrentUser] =
-    useState<UserProfile | null>(null);
-
-  // --------------------------------------------------
-  // Application data
-  // --------------------------------------------------
-
-  const [studentProfile, setStudentProfile] =
-    useState<StudentProfile>(mockStudentData.student);
-
-  const [internshipDetails, setInternshipDetails] =
-    useState<InternshipDetails>(mockStudentData.internship);
-
-  // --------------------------------------------------
-  // Student State
-  // --------------------------------------------------
-
-  const [activeInternshipId, setActiveInternshipId] =
-    useState<string | null>(null);
-
-  const [attentionData, setAttentionData] =
-    useState<AttentionStatus>(mockStudentData.attention);
-
-  const [reportsList, setReportsList] =
-    useState<ReportItem[]>(mockStudentData.reports);
-
-  const [detailedReports, setDetailedReports] =
-    useState<WeeklyReport[]>(mockStudentData.weeklyReports);
-
-  const [skillsList, setSkillsList] =
-    useState<SkillMatchItem[]>(mockStudentData.skills);
-
-  const { progress, tasks } = mockStudentData;
-
-  // --------------------------------------------------
-  // Mentor State
-  // --------------------------------------------------
-
-  const [mentorProfile, setMentorProfile] =
-    useState<MentorProfile | null>(null);
-
-  const [mentorInterns, setMentorInterns] =
-    useState<MentorInternItem[]>([]);
-
-  const [allReports, setAllReports] =
-    useState<BackendProgressReport[]>([]);
-
-  const [mentorTasks, setMentorTasks] =
-    useState<TaskItem[]>([]);
-
-  const [mentorEvaluations, setMentorEvaluations] =
-    useState<EvaluationItem[]>([]);
-
-  const [evalPresetStudentId, setEvalPresetStudentId] =
-    useState<string | undefined>(undefined);
-
-  const [evalPresetInternshipId, setEvalPresetInternshipId] =
-    useState<string | undefined>(undefined);
-
-  // --------------------------------------------------
-  // Admin State
-  // --------------------------------------------------
-
-  const [adminStats, setAdminStats] = useState<AdminStats>({
-    total_students: 2,
-    active_internships: 1,
-    total_companies: 1,
-    total_mentors: 1,
-    pending_applications: 0,
-    reports_pending_review: 1,
-    students_needing_attention: 1,
-    completed_internships: 0,
-  });
-
-  const [adminApplications, setAdminApplications] =
-    useState<AdminApplicationItem[]>([]);
-
-  const [adminMentors, setAdminMentors] =
-    useState<AdminMentorItem[]>([]);
-
-  const [adminStudents, setAdminStudents] =
-    useState<AdminStudentItem[]>([]);
-
-  const [adminInternships, setAdminInternships] =
-    useState<AdminInternshipItem[]>([]);
-
-  const [adminReportsAlerts, setAdminReportsAlerts] =
-    useState<AdminReportAlertItem[]>([]);
-
-  // --------------------------------------------------
-  // Backend Health Check
-  // --------------------------------------------------
-
-  const checkHealth = useCallback(async () => {
-    try {
-      const health = await healthApi.check();
-
-      if (health.status === "healthy") {
-        setBackendConnected(true);
-        return true;
-      }
-    } catch {
-      setBackendConnected(false);
-    }
-
-    return false;
-  }, []);
-
-  // --------------------------------------------------
-  // Load Student Data
-  // --------------------------------------------------
-
-  const loadStudentData = useCallback(async () => {
-    try {
-      let primary: BackendInternship | null = null;
-      const token = authStorage.getToken();
-
-      if (token) {
-        try {
-          const me = await authApi.getMe();
-          const studentId = me.student_id || me.id;
-
-          const backendProfile =
-            await studentsApi.getProfile(studentId);
-
-          if (backendProfile) {
-            setStudentProfile((prev) => ({
-              ...prev,
-              name:
-                backendProfile.name ||
-                me.full_name,
-              email:
-                backendProfile.email ||
-                me.email,
-              studentId:
-                backendProfile.student_id_number ||
-                prev.studentId,
-              phone:
-                backendProfile.phone ||
-                prev.phone,
-              college:
-                backendProfile.college ||
-                prev.college,
-              university:
-                backendProfile.university ||
-                prev.university,
-              department:
-                backendProfile.department ||
-                prev.department,
-              year:
-                backendProfile.year_of_study ||
-                prev.year,
-              gpa:
-                backendProfile.gpa !== null &&
-                backendProfile.gpa !== undefined
-                  ? backendProfile.gpa
-                  : prev.gpa,
-              skills:
-                backendProfile.skills &&
-                backendProfile.skills.length > 0
-                  ? backendProfile.skills
-                  : prev.skills,
-            }));
-          }
-
-          const studentInternships =
-            await studentsApi.getInternships(studentId);
-
-          if (
-            studentInternships &&
-            studentInternships.length > 0
-          ) {
-            primary =
-              studentInternships[0].internship;
-          }
-        } catch {
-          // Keep defaults
-        }
-      }
-
-      if (!primary) {
-        const backendInternships =
-          await internshipsApi.list();
-
-        if (
-          backendInternships &&
-          backendInternships.length > 0
-        ) {
-          primary = backendInternships[0];
-        }
-      }
-
-      if (primary) {
-        setActiveInternshipId(primary.id);
-
-        let mentorName = "Dr. Marcus Vance";
-        let mentorEmail =
-          "m.vance@cloudscale.io";
-        let mentorTitle =
-          "Staff Systems Architect";
-
-        if (primary.description) {
-          const supervisorMatch =
-            primary.description.match(
-              /Supervisor:\s*([^|\]]+)/
-            );
-
-          if (supervisorMatch) {
-            mentorName =
-              supervisorMatch[1].trim();
-
-            mentorTitle =
-              "Host Organization Supervisor";
-          }
-
-          const emailMatch =
-            primary.description.match(
-              /Email:\s*([^|\]]+)/
-            );
-
-          if (emailMatch) {
-            mentorEmail =
-              emailMatch[1].trim();
-          }
-        }
-
-        setInternshipDetails({
-          company:
-            primary.company_name ||
-            "CloudScale Distributed Systems",
-
-          role: primary.title,
-
-          mentor: mentorName,
-
-          mentorTitle: mentorTitle,
-
-          mentorEmail: mentorEmail,
-
-          location:
-            primary.location ||
-            "Seattle, WA / Remote",
-
-          term: "Fall 2026 Cohort",
-
-          startDate: primary.start_date
-            ? primary.start_date.split("T")[0]
-            : "Aug 15, 2026",
-
-          endDate: primary.end_date
-            ? primary.end_date.split("T")[0]
-            : "Nov 07, 2026",
-
-          status: "Active",
-
-          stipend:
-            primary.stipend ||
-            "$1,800 / month",
-        });
-
-        // --------------------------------------------------
-        // Reports
-        // --------------------------------------------------
-
-        const backendReports =
-          await internshipsApi.listReports(
-            primary.id
-          );
-
-        if (
-          backendReports &&
-          backendReports.length > 0
-        ) {
-          setAllReports(backendReports);
-
-          const mappedReports: ReportItem[] =
-            backendReports.map((r) => ({
-              week: r.week_number,
-
-              status:
-                (r.status === "Approved"
-                  ? "Approved"
-                  : "Pending Submission") as
-                  | "Approved"
-                  | "Pending Submission",
-
-              hoursLogged: r.hours_logged,
-
-              mentorScore: r.mentor_score,
-
-              submissionDate:
-                r.submission_date
-                  ? r.submission_date.split("T")[0]
-                  : undefined,
-            }));
-
-          setReportsList(mappedReports);
-
-          const mappedDetailed: WeeklyReport[] =
-            backendReports.map((r) => {
-              const existingMock =
-                mockStudentData.weeklyReports.find(
-                  (m) =>
-                    m.weekNumber ===
-                    r.week_number
-                );
-
-              return {
-                id: r.id,
-
-                weekNumber: r.week_number,
-
-                startDate:
-                  existingMock?.startDate ||
-                  "2026-09-01",
-
-                endDate:
-                  existingMock?.endDate ||
-                  "2026-09-07",
-
-                tasksCompleted:
-                  existingMock?.tasksCompleted ||
-                  r.summary ||
-                  "Weekly milestones completed.",
-
-                workDescription:
-                  r.summary ||
-                  existingMock?.workDescription ||
-                  r.title ||
-                  "Work completed.",
-
-                skillsLearned:
-                  existingMock?.skillsLearned ||
-                  ["Development", "Testing"],
-
-                challengesFaced:
-                  existingMock?.challengesFaced ||
-                  "None",
-
-                nextWeekPlan:
-                  existingMock?.nextWeekPlan ||
-                  "Continue project roadmap.",
-
-                submissionDate:
-                  r.submission_date
-                    ? r.submission_date.split(
-                        "T"
-                      )[0]
-                    : r.created_at
-                    ? r.created_at.split("T")[0]
-                    : "Recently",
-
-                status:
-                  (r.status === "Approved"
-                    ? "Reviewed"
-                    : "Pending Review") as ReportStatus,
-
-                shortSummary:
-                  r.title ||
-                  `Week ${r.week_number} Progress Report`,
-
-                mentorFeedbackStatus:
-                  r.status === "Approved"
-                    ? "Reviewed"
-                    : "Pending Review",
-
-                mentorScore:
-                  r.mentor_score,
-
-                mentorFeedback:
-                  r.mentor_feedback,
-
-                hoursLogged:
-                  r.hours_logged,
-              };
-            });
-
-          setDetailedReports(
-            mappedDetailed
-          );
-        }
-
-        // --------------------------------------------------
-        // Skill Gap
-        // --------------------------------------------------
-
-        try {
-          const skillGap =
-            await intelligenceApi.getInternshipSkillGap(
-              primary.id
-            );
-
-          if (skillGap) {
-            const mappedSkills: SkillMatchItem[] = [
-              ...skillGap.matched_skills.map(
-                (s) => ({
-                  skill: s,
-                  studentLevel:
-                    "Advanced" as const,
-                  requiredLevel:
-                    "Intermediate" as const,
-                  matchStatus:
-                    "Met" as const,
-                  progressPct: 100,
-                })
-              ),
-
-              ...skillGap.missing_skills.map(
-                (s) => ({
-                  skill: s,
-                  studentLevel:
-                    "Beginner" as const,
-                  requiredLevel:
-                    "Intermediate" as const,
-                  matchStatus:
-                    "Missing" as const,
-                  progressPct: 40,
-                })
-              ),
-            ];
-
-            if (mappedSkills.length > 0) {
-              setSkillsList(mappedSkills);
-            }
-          }
-        } catch {
-          // Keep default skill data
-        }
-
-        // --------------------------------------------------
-        // Attention Evaluation
-        // --------------------------------------------------
-
-        try {
-          const attRes =
-            await intelligenceApi.evaluateAttention({
-              progress_consistency: 90,
-              task_completion: 85,
-              report_submission: 95,
-              mentor_feedback: 90,
-            });
-
-          if (attRes) {
-            setAttentionData({
-              status:
-                attRes.status as
-                  | "ON_TRACK"
-                  | "MONITOR"
-                  | "NEEDS_ATTENTION",
-
-              attentionScore:
-                Number(attRes.score),
-
-              health:
-                attRes.status === "ON_TRACK"
-                  ? "Healthy"
-                  : "Attention Needed",
-
-              riskScore: Math.max(
-                0,
-                100 - Number(attRes.score)
-              ),
-
-              lastEvaluated:
-                "Just now (Live Intelligence Engine)",
-
-              flaggedReasons:
-                attRes.reasons,
-
-              reasons:
-                attRes.reasons,
-
-              recommendedActions:
-                attRes.recommendations,
-
-              recommendations:
-                attRes.recommendations,
-            });
-          }
-        } catch {
-          // Keep defaults
-        }
-      }
-    } catch {
-      // Backend not reachable
-    }
-  }, []);
-
-  // --------------------------------------------------
-  // Load Mentor Data
-  // --------------------------------------------------
-
-  const loadMentorData = useCallback(
-    async () => {
-      try {
-        const profile =
-          await mentorsApi.getMe();
-
-        setMentorProfile(profile);
-
-        const mentorId =
-          profile.id || profile.user_id;
-
-        const interns =
-          await mentorsApi.getInterns(
-            mentorId
-          );
-
-        setMentorInterns(interns);
-
-        if (activeInternshipId) {
-          const reps =
-            await internshipsApi.listReports(
-              activeInternshipId
-            );
-
-          setAllReports(reps);
-        } else {
-          const inList =
-            await internshipsApi.list();
-
-          if (inList.length > 0) {
-            const reps =
-              await internshipsApi.listReports(
-                inList[0].id
-              );
-
-            setAllReports(reps);
-          }
-        }
-
-        const tasksList =
-          await mentorsApi.getTasks(
-            mentorId
-          );
-
-        setMentorTasks(tasksList);
-
-        const evals =
-          await mentorsApi.getEvaluations(
-            mentorId
-          );
-
-        setMentorEvaluations(evals);
-      } catch {
-        // Keep baseline
-      }
-    },
-    [activeInternshipId]
-  );
-
-  // --------------------------------------------------
-  // Load Admin Data
-  // --------------------------------------------------
-
-  const loadAdminData = useCallback(
-    async () => {
-      try {
-        const stats =
-          await adminApi.getStats();
-
-        setAdminStats(stats);
-
-        const apps =
-          await adminApi.getApplications();
-
-        setAdminApplications(apps);
-
-        const mentors =
-          await adminApi.getMentors();
-
-        setAdminMentors(mentors);
-
-        const students =
-          await adminApi.getStudents();
-
-        setAdminStudents(students);
-
-        const internships =
-          await adminApi.getInternships();
-
-        setAdminInternships(internships);
-
-        const reportsAlerts =
-          await adminApi.getReportsAndAlerts();
-
-        setAdminReportsAlerts(
-          reportsAlerts
-        );
-      } catch {
-        // Keep baseline
-      }
-    },
-    []
-  );
-
-  // --------------------------------------------------
-  // Initial Load
-  // --------------------------------------------------
+import React, { useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+
+export default function HomePage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    async function initializeDashboard() {
-      const isHealthy =
-        await checkHealth();
-
-      const token =
-        authStorage.getToken();
-
-      if (token) {
-        try {
-          const user =
-            await authApi.getMe();
-
-          setCurrentUser(user);
-
-          if (isHealthy) {
-            if (
-              user.role === "mentor"
-            ) {
-              await loadMentorData();
-            } else if (
-              user.role === "admin"
-            ) {
-              await loadAdminData();
-            } else {
-              await loadStudentData();
-            }
-          }
-        } catch {
-          authStorage.removeToken();
-
-          setCurrentUser(null);
-
-          if (isHealthy) {
-            await loadStudentData();
-          }
-        }
-      } else {
-        if (isHealthy) {
-          await loadStudentData();
-        }
-      }
+    if (!loading && user) {
+      const role = (user.role || "").toLowerCase();
+      if (role === "admin") router.replace("/admin");
+      else if (role === "mentor") router.replace("/mentor");
+      else router.replace("/student");
     }
+  }, [user, loading, router]);
 
-    initializeDashboard();
-  }, [
-    checkHealth,
-    loadMentorData,
-    loadAdminData,
-    loadStudentData,
-  ]);
-
-  // --------------------------------------------------
-  // Authentication
-  // --------------------------------------------------
-
-  const handleAuthSuccess = async (
-    user: UserProfile
-  ) => {
-    setCurrentUser(user);
-
-    setActiveTab("Dashboard");
-
-    if (user.role === "mentor") {
-      await loadMentorData();
-    } else if (user.role === "admin") {
-      await loadAdminData();
-    } else {
-      await loadStudentData();
-    }
-  };
-
-  const handleLogout = () => {
-    authApi.logout();
-
-    setCurrentUser(null);
-
-    setActiveTab("Dashboard");
-
-    loadStudentData();
-  };
-
-  // --------------------------------------------------
-  // Role & Navigation
-  // --------------------------------------------------
-
-  const currentRole =
-    currentUser?.role || "student";
-
-  const validTabs =
-    currentRole === "mentor"
-      ? [
-          "Dashboard",
-          "My Interns",
-          "Weekly Reports",
-          "Tasks",
-          "Evaluations",
-          "My Profile",
-        ]
-      : currentRole === "admin"
-      ? [
-          "Dashboard",
-          "Students",
-          "Internships",
-          "Applications",
-          "Mentors",
-          "Reports & Alerts",
-          "Profile",
-        ]
-      : [
-          "Dashboard",
-          "My Internship",
-          "Progress & Reports",
-          "Intelligence",
-          "My Profile",
-        ];
-
-  const currentTab = validTabs.includes(
-    activeTab
-  )
-    ? activeTab
-    : "Dashboard";
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
+        <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+        <p className="mt-4 text-sm text-slate-400 font-medium">Loading EduIntern SIMMS...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+      {/* Top Navigation */}
+      <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-600/30">
+              SIM
+            </div>
+            <div>
+              <span className="font-extrabold text-base tracking-tight text-white">
+                EduIntern <span className="text-indigo-400">SIMMS</span>
+              </span>
+            </div>
+          </div>
 
-      {/* Sidebar */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all"
+            >
+              Create Account
+            </Link>
+          </div>
+        </div>
+      </header>
 
-      <Sidebar
-        activeTab={currentTab}
-        setActiveTab={setActiveTab}
-        isOpen={isMobileSidebarOpen}
-        onClose={() =>
-          setIsMobileSidebarOpen(false)
-        }
-        role={currentRole}
-        currentUser={currentUser}
-      />
+      {/* Hero Section */}
+      <main className="flex-1">
+        <section className="relative overflow-hidden py-20 lg:py-28 px-4 sm:px-6 lg:px-8">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Layout Container */}
+          <div className="max-w-5xl mx-auto text-center relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-semibold mb-6">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Explainable Milestone Tracking & Early Attention Layer
+            </div>
 
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+            <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
+              Smart Internship Management &amp;{" "}
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400">
+                Continuous Monitoring
+              </span>
+            </h1>
 
-        {/* Top Navbar */}
+            <p className="mt-6 text-lg sm:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
+              Connect academia and industry with verifiable milestone tracking, live weekly
+              progress reporting, deterministic skill-gap intelligence, and transparent supervision.
+            </p>
 
-        <TopNavbar
-          activeTabTitle={currentTab}
-          onOpenSidebar={() =>
-            setIsMobileSidebarOpen(true)
-          }
-          currentUser={currentUser}
-          backendConnected={backendConnected}
-          onOpenAuthModal={() =>
-            setIsAuthModalOpen(true)
-          }
-          onLogout={handleLogout}
-        />
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/login"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-base shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+              >
+                <span>Access Portal</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Link>
+              <Link
+                href="/register"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 font-semibold text-base transition-colors flex items-center justify-center"
+              >
+                Register as Student or Mentor
+              </Link>
+            </div>
+          </div>
+        </section>
 
-        {/* Main Content */}
+        {/* 3 Portal Roles Overview */}
+        <section className="py-16 bg-slate-900/50 border-t border-slate-800/80 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl sm:text-3xl font-bold text-white">Three Distinct Operational Portals</h2>
+              <p className="text-slate-400 text-sm mt-2">Tailored workflows designed for every stakeholder</p>
+            </div>
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
-
-          {/* ============================================================ */}
-          {/* STUDENT PORTAL */}
-          {/* ============================================================ */}
-
-          {currentRole === "student" && (
-            <>
-              {/* Dashboard */}
-
-              {currentTab === "Dashboard" && (
-                <div className="space-y-5">
-
-                  <DashboardHeader
-                    student={studentProfile}
-                    internship={internshipDetails}
-                    onActionClick={() =>
-                      setActiveTab(
-                        "Progress & Reports"
-                      )
-                    }
-                    onNavigateTab={
-                      setActiveTab
-                    }
-                  />
-
-                  <section aria-label="Student Internship Metrics">
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-                      <InternshipStatusCard
-                        internship={
-                          internshipDetails
-                        }
-                        onNavigateToInternship={() =>
-                          setActiveTab(
-                            "My Internship"
-                          )
-                        }
-                      />
-
-                      <ProgressCard
-                        progress={progress}
-                        onNavigateToProgress={() =>
-                          setActiveTab(
-                            "Progress & Reports"
-                          )
-                        }
-                      />
-
-                      <ReportsSubmittedCard
-                        reports={reportsList}
-                        onNavigateToReports={() =>
-                          setActiveTab(
-                            "Progress & Reports"
-                          )
-                        }
-                      />
-
-                      <InternshipIntelligenceCard
-                        attention={
-                          attentionData
-                        }
-                        skills={skillsList}
-                        onNavigateToIntelligence={() =>
-                          setActiveTab(
-                            "Intelligence"
-                          )
-                        }
-                      />
-
-                    </div>
-
-                  </section>
-
-                  <CurrentInsightSection
-                    attention={
-                      attentionData
-                    }
-                    onNavigateToIntelligence={() =>
-                      setActiveTab(
-                        "Intelligence"
-                      )
-                    }
-                  />
-
-                  <section className="rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500 shadow-2xs">
-
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-
-                      <span>
-                        Logged in as{" "}
-                        <strong>
-                          {studentProfile.name}
-                        </strong>{" "}
-                        ({studentProfile.studentId}){" "}
-                        •{" "}
-                        {studentProfile.department}
-                      </span>
-
-                      <div className="flex items-center gap-3">
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setActiveTab(
-                              "My Profile"
-                            )
-                          }
-                          className="font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                        >
-                          View Full Profile →
-                        </button>
-
-                        <span className="inline-flex items-center gap-1 text-slate-400">
-
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              backendConnected
-                                ? "bg-emerald-500"
-                                : "bg-amber-500"
-                            }`}
-                          />
-
-                          {backendConnected
-                            ? "Live Backend API Active"
-                            : "Mock Data Active"}
-
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                  </section>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Student Portal */}
+              <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 hover:border-indigo-500/40 transition-all">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center font-bold text-lg mb-4 ring-1 ring-indigo-500/20">
+                  ST
                 </div>
-              )}
+                <h3 className="text-lg font-bold text-white">Student Portal</h3>
+                <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                  Browse verified internships, apply to opportunities, log weekly progress reports, track completed hours, and view personalized skill gap analysis.
+                </p>
+                <div className="mt-6 pt-4 border-t border-slate-700/50">
+                  <Link
+                    href="/login"
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5"
+                  >
+                    <span>Student Login</span>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
 
-              {/* My Internship */}
+              {/* Mentor Portal */}
+              <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 hover:border-amber-500/40 transition-all">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-lg mb-4 ring-1 ring-amber-500/20">
+                  MT
+                </div>
+                <h3 className="text-lg font-bold text-white">Mentor Portal</h3>
+                <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                  Oversee assigned student cohorts, review milestone submissions, evaluate performance, and trigger targeted interventions for students needing guidance.
+                </p>
+                <div className="mt-6 pt-4 border-t border-slate-700/50">
+                  <Link
+                    href="/login"
+                    className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5"
+                  >
+                    <span>Mentor Login</span>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
 
-              {currentTab === "My Internship" && (
-                <MyInternshipView
-                  internship={
-                    internshipDetails
-                  }
-                  studentId={
-                    currentUser
-                      ? currentUser.student_id ||
-                        currentUser.id
-                      : undefined
-                  }
-                  onRegistrationSuccess={async () => {
-                    await loadStudentData();
-                    setActiveTab(
-                      "Dashboard"
-                    );
-                  }}
-                />
-              )}
+              {/* Admin Console */}
+              <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700/60 hover:border-rose-500/40 transition-all">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center font-bold text-lg mb-4 ring-1 ring-rose-500/20">
+                  AD
+                </div>
+                <h3 className="text-lg font-bold text-white">Admin Console</h3>
+                <p className="text-slate-400 text-xs mt-2 leading-relaxed">
+                  Institutional governance: approve internship postings, match mentors to students, audit compliance, inspect system analytics, and manage access.
+                </p>
+                <div className="mt-6 pt-4 border-t border-slate-700/50">
+                  <Link
+                    href="/login"
+                    className="text-xs font-semibold text-rose-400 hover:text-rose-300 flex items-center gap-1.5"
+                  >
+                    <span>Administrator Access</span>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
-              {/* Progress & Reports */}
-
-              {currentTab === "Progress & Reports" && (
-                <ProgressAndReportsView
-                  progress={progress}
-                  tasks={tasks}
-                  reports={detailedReports}
-                  internshipId={
-                    activeInternshipId ||
-                    undefined
-                  }
-                  studentId={
-                    currentUser
-                      ? currentUser.student_id ||
-                        currentUser.id
-                      : undefined
-                  }
-                  onReportSubmitted={
-                    loadStudentData
-                  }
-                />
-              )}
-
-              {/* Intelligence */}
-
-              {currentTab === "Intelligence" && (
-                <IntelligenceView
-                  attention={
-                    attentionData
-                  }
-                  skills={skillsList}
-                />
-              )}
-
-              {/* Profile */}
-
-              {currentTab === "My Profile" && (
-                <StudentProfileView
-                  initialProfile={
-                    studentProfile
-                  }
-                  studentId={
-                    currentUser
-                      ? currentUser.student_id ||
-                        currentUser.id
-                      : undefined
-                  }
-                  onProfileUpdate={
-                    setStudentProfile
-                  }
-                />
-              )}
-            </>
-          )}
-
-          {/* ============================================================ */}
-          {/* MENTOR PORTAL */}
-          {/* ============================================================ */}
-
-          {currentRole === "mentor" && (
-            <>
-              {currentTab === "Dashboard" && (
-                <MentorDashboardView
-                  profile={mentorProfile}
-                  interns={mentorInterns}
-                  reports={allReports}
-                  onNavigateTab={
-                    setActiveTab
-                  }
-                  onOpenReviewReport={() =>
-                    setActiveTab(
-                      "Weekly Reports"
-                    )
-                  }
-                />
-              )}
-
-              {currentTab === "My Interns" && (
-                <MentorInternsView
-                  interns={mentorInterns}
-                  reports={allReports}
-                  onReportReviewed={
-                    loadMentorData
-                  }
-                  onOpenEvaluationModal={(
-                    sId,
-                    iId
-                  ) => {
-                    setEvalPresetStudentId(
-                      sId
-                    );
-
-                    setEvalPresetInternshipId(
-                      iId
-                    );
-
-                    setActiveTab(
-                      "Evaluations"
-                    );
-                  }}
-                />
-              )}
-
-              {currentTab === "Weekly Reports" && (
-                <MentorWeeklyReportsView
-                  reports={allReports}
-                  onReportReviewed={
-                    loadMentorData
-                  }
-                />
-              )}
-
-              {currentTab === "Tasks" && (
-                <MentorTasksView
-                  tasks={mentorTasks}
-                  interns={mentorInterns}
-                  onTaskCreated={
-                    loadMentorData
-                  }
-                />
-              )}
-
-              {currentTab === "Evaluations" && (
-                <MentorEvaluationsView
-                  evaluations={
-                    mentorEvaluations
-                  }
-                  interns={mentorInterns}
-                  onEvaluationCreated={
-                    loadMentorData
-                  }
-                  presetStudentId={
-                    evalPresetStudentId
-                  }
-                  presetInternshipId={
-                    evalPresetInternshipId
-                  }
-                />
-              )}
-
-              {currentTab === "My Profile" && (
-                <MentorProfileView
-                  initialProfile={
-                    mentorProfile
-                  }
-                  onProfileUpdated={(
-                    updated
-                  ) =>
-                    setMentorProfile(
-                      updated
-                    )
-                  }
-                />
-              )}
-            </>
-          )}
-
-          {/* ============================================================ */}
-          {/* ADMIN PORTAL */}
-          {/* ============================================================ */}
-
-          {currentRole === "admin" && (
-            <>
-              {currentTab === "Dashboard" && (
-                <AdminDashboardView
-                  stats={adminStats}
-                  applications={
-                    adminApplications
-                  }
-                  onNavigateTab={
-                    setActiveTab
-                  }
-                  onApproveApplication={async (
-                    id
-                  ) => {
-                    await adminApi.updateApplicationStatus(
-                      id,
-                      "Approved"
-                    );
-
-                    loadAdminData();
-                  }}
-                  onRejectApplication={async (
-                    id
-                  ) => {
-                    await adminApi.updateApplicationStatus(
-                      id,
-                      "Rejected"
-                    );
-
-                    loadAdminData();
-                  }}
-                />
-              )}
-
-              {currentTab === "Applications" && (
-                <AdminApplicationsView
-                  applications={
-                    adminApplications
-                  }
-                  onApplicationUpdated={
-                    loadAdminData
-                  }
-                />
-              )}
-
-              {currentTab === "Mentors" && (
-                <AdminMentorsView
-                  mentors={adminMentors}
-                  internships={
-                    adminInternships
-                  }
-                  onMentorAssigned={
-                    loadAdminData
-                  }
-                />
-              )}
-
-              {currentTab === "Students" && (
-                <AdminStudentsView
-                  students={
-                    adminStudents
-                  }
-                />
-              )}
-
-              {currentTab === "Internships" && (
-                <AdminInternshipsView
-                  internships={
-                    adminInternships
-                  }
-                />
-              )}
-
-              {currentTab === "Reports & Alerts" && (
-                <AdminReportsAlertsView
-                  items={
-                    adminReportsAlerts
-                  }
-                />
-              )}
-
-              {currentTab === "Profile" && (
-                <AdminProfileView
-                  currentUser={
-                    currentUser
-                  }
-                />
-              )}
-            </>
-          )}
-
-        </main>
-
-      </div>
-
-      {/* Auth Modal */}
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() =>
-          setIsAuthModalOpen(false)
-        }
-        onAuthSuccess={
-          handleAuthSuccess
-        }
-      />
-
+      {/* Footer */}
+      <footer className="border-t border-slate-800/80 py-8 px-4 text-center text-xs text-slate-500">
+        <p>Smart Internship Management and Monitoring System (SIMMS / EduIntern)</p>
+        <p className="mt-1">Built with Next.js, FastAPI &amp; Explainable Decision Intelligence</p>
+      </footer>
     </div>
   );
 }

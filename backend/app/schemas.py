@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for request validation and response serialization."""
+"""Pydantic schemas for request validation and response serialization."""
 
 from datetime import datetime
 from enum import Enum
@@ -336,6 +336,7 @@ class StudentProfileResponse(BaseModel):
     id: str
     user_id: str
     name: str
+    full_name: Optional[str] = None
     email: str
     student_id_number: Optional[str] = None
     phone: Optional[str] = None
@@ -574,8 +575,8 @@ class MentorInternItem(BaseModel):
 
 class ReportReviewRequest(BaseModel):
     """Schema for mentor reviewing a weekly progress report."""
-    status: str = Field(
-        ...,
+    status: Optional[str] = Field(
+        default="Approved",
         description="Approved, Needs Revision, or Rejected",
     )
     mentor_feedback: Optional[str] = Field(

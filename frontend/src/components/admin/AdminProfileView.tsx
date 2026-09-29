@@ -8,7 +8,7 @@ interface Props {
 
 export function AdminProfileView({ currentUser }: Props) {
   const name = currentUser?.full_name || "System Administrator";
-  const email = currentUser?.email || "admin@university.edu";
+  const email = currentUser?.email || "";
 
   return (
     <div className="space-y-5 max-w-4xl">

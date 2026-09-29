@@ -48,49 +48,57 @@ export function AdminInternshipsView({ internships }: Props) {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition-all"
-          >
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-                  <BriefcaseIcon className="w-5 h-5" />
+      {filtered.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-400">
+          <p className="text-sm font-medium">No internship positions found.</p>
+          <p className="text-xs text-slate-400 mt-1">Internship placements registered in the system will be displayed here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filtered.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition-all"
+            >
+              <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                    <BriefcaseIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
+                    <p className="text-xs text-indigo-600 font-medium">{item.company_name}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
-                  <p className="text-xs text-indigo-600 font-medium">{item.company_name}</p>
-                </div>
-              </div>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {item.status}
-              </span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-medium block">Assigned Mentor</span>
-                <span className="font-semibold text-slate-800 block truncate mt-0.5">
-                  {item.mentor_name || "Dr. Marcus Vance"}
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {item.status}
                 </span>
               </div>
-              <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
-                <span className="text-[10px] text-slate-400 font-medium block">Domain / Mode</span>
-                <span className="font-semibold text-slate-800 block truncate mt-0.5">
-                  {item.domain || "Cloud"} • {item.mode}
-                </span>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-medium block">Assigned Mentor</span>
+                  <span className="font-semibold text-slate-800 block truncate mt-0.5">
+                    {item.mentor_name || "Unassigned"}
+                  </span>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-medium block">Domain / Mode</span>
+                  <span className="font-semibold text-slate-800 block truncate mt-0.5">
+                    {[item.domain, item.mode].filter(Boolean).join(" • ") || "—"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>Stipend: <strong className="text-slate-800">{item.stipend || "Unpaid / Academic"}</strong></span>
+                <span className="font-semibold text-indigo-600">{item.applicant_count} Applicants</span>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span>Stipend: <strong className="text-slate-800">{item.stipend || "$1,800 / mo"}</strong></span>
-              <span className="font-semibold text-indigo-600">{item.applicant_count} Applicants</span>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

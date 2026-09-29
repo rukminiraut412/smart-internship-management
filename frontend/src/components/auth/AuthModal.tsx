@@ -158,38 +158,6 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
           </button>
         </div>
 
-        {/* Demo Quick-Fill Section (Visible on Login tab) */}
-        {mode === "login" && (
-          <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-800 mb-2 flex items-center justify-between">
-              <span>Quick Demo Accounts</span>
-              <span className="text-[10px] font-normal text-indigo-600">One-click sign in fill</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleFillDemo("alex.rivera@university.edu", "student")}
-                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
-              >
-                🎓 Student
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo("m.vance@cloudscale.io", "mentor")}
-                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
-              >
-                👔 Mentor
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo("admin@university.edu", "admin")}
-                className="rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 shadow-2xs transition-colors"
-              >
-                ⚡ Admin
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Feedback Alerts */}
         {errorMessage && (
@@ -218,7 +186,7 @@ export function AuthModal({ isOpen, onClose, onAuthSuccess }: AuthModalProps) {
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Alex Rivera"
+                placeholder="e.g. Your Full Name"
                 className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs text-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-hidden"
               />
             </div>

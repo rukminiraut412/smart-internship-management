@@ -81,12 +81,19 @@ export function MentorInternsView({
       </div>
 
       {/* Interns Directory Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {interns.map((intern) => (
-          <div
-            key={intern.student_id}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-all"
-          >
+      {interns.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-400">
+          <p className="text-sm font-medium">No assigned interns found.</p>
+          <p className="text-xs text-slate-400 mt-1">When students are assigned to you by administrators, they will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {interns.map((intern) => (
+            <div
+              key={intern.student_id}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:shadow-sm transition-all"
+            >
+
             <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center ring-2 ring-indigo-200">
@@ -170,6 +177,8 @@ export function MentorInternsView({
           </div>
         ))}
       </div>
+      )}
+
 
       {/* Intern Details Drawer / Modal */}
       {selectedIntern && (

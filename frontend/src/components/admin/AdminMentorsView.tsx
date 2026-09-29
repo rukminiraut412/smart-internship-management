@@ -85,60 +85,72 @@ export function AdminMentorsView({ mentors, internships, onMentorAssigned }: Pro
       )}
 
       {/* Mentors Directory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {mentors.map((mentor) => (
-          <div
-            key={mentor.id}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition-all"
-          >
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-600 font-bold text-sm flex items-center justify-center border border-violet-100">
-                  {mentor.name.slice(0, 2).toUpperCase()}
+      {mentors.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-slate-400">
+          <p className="text-sm font-medium">No registered mentors found.</p>
+          <p className="text-xs text-slate-400 mt-1">When mentors create accounts, their professional profiles will show up here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {mentors.map((mentor) => (
+            <div
+              key={mentor.id}
+              className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition-all"
+            >
+              <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-600 font-bold text-sm flex items-center justify-center border border-violet-100">
+                    {mentor.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{mentor.name}</h3>
+                    <p className="text-xs text-slate-500">{[mentor.job_title, mentor.company_name].filter(Boolean).join(" • ")}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">{mentor.name}</h3>
-                  <p className="text-xs text-slate-500">{mentor.job_title} • {mentor.company_name}</p>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                  Verified Mentor
+                </span>
+              </div>
+
+              <div className="mt-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Email:</span>
+                  <span className="font-semibold text-slate-800">{mentor.email}</span>
                 </div>
+                {mentor.department && (
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Department:</span>
+                    <span className="font-semibold text-slate-800">{mentor.department}</span>
+                  </div>
+                )}
+                {mentor.phone && (
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Contact Phone:</span>
+                    <span className="font-semibold text-slate-800">{mentor.phone}</span>
+                  </div>
+                )}
               </div>
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-                Verified Mentor
-              </span>
-            </div>
 
-            <div className="mt-3 space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Email:</span>
-                <span className="font-semibold text-slate-800">{mentor.email}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Department:</span>
-                <span className="font-semibold text-slate-800">{mentor.department || "Engineering"}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Contact Phone:</span>
-                <span className="font-semibold text-slate-800">{mentor.phone || "+1 (555) 441-2099"}</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  Assigned Interns: <strong className="text-slate-900">{mentor.assigned_interns_count}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMentorId(mentor.id);
+                    setIsModalOpen(true);
+                  }}
+                  className="font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                >
+                  Assign Placement →
+                </button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500">
-                Assigned Interns: <strong className="text-slate-900">{mentor.assigned_interns_count}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMentorId(mentor.id);
-                  setIsModalOpen(true);
-                }}
-                className="font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
-              >
-                Assign Placement →
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Assign Mentor Modal */}
       {isModalOpen && (

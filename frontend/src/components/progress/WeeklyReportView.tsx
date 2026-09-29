@@ -6,7 +6,6 @@ import {
   ClockIcon,
 } from "@/components/common/Icons";
 import {
-  mockStudentData,
   WeeklyReport,
 } from "@/data/mockData";
 import { WeeklyReportForm } from "./WeeklyReportForm";
@@ -22,13 +21,14 @@ interface WeeklyReportViewProps {
 }
 
 export function WeeklyReportView({
-  initialReports = mockStudentData.weeklyReports,
-  initialWeek = 5,
+  initialReports = [],
+  initialWeek = 1,
   internshipId,
   studentId,
   onBackToProgress,
   onReportSubmitted,
 }: WeeklyReportViewProps) {
+
   const [reports, setReports] =
     useState<WeeklyReport[]>(initialReports);
 

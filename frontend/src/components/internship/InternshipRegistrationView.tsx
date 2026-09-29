@@ -95,24 +95,21 @@ export function InternshipRegistrationView({
                 intern.domain || "General Engineering",
               startDate: intern.start_date
                 ? intern.start_date.split("T")[0]
-                : "2026-08-15",
+                : "",
               endDate: intern.end_date
                 ? intern.end_date.split("T")[0]
-                : "2026-11-07",
+                : "",
               mode:
                 (intern.mode as
                   | "Online"
                   | "Offline"
                   | "Hybrid") || "Hybrid",
-              location: intern.location || "Remote",
-              requiredSkills: [
-                "Engineering",
-                "Development",
-              ],
+              location: intern.location || "",
+              requiredSkills: intern.required_skills || [],
               description: intern.description || "",
-              mentorName: "Assigned Supervisor",
-              mentorEmail: "supervisor@company.com",
-              mentorPhone: "+1 (555) 000-0000",
+              mentorName: intern.mentor_name || "",
+              mentorEmail: intern.mentor_email || "",
+              mentorPhone: intern.mentor_phone || "",
               registrationStatus:
                 (item.application_status === "Approved"
                   ? "Approved"
@@ -127,8 +124,9 @@ export function InternshipRegistrationView({
                     day: "numeric",
                     year: "numeric",
                   })
-                : "Recently",
+                : "",
             };
+
           });
 
           setRegistrations(mapped);

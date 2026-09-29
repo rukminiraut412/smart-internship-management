@@ -15,7 +15,6 @@ import {
   CheckIcon,
 } from "@/components/common/Icons";
 import {
-  mockStudentData,
   InternshipDetails,
   ProgressSummary,
   TaskItem,
@@ -23,6 +22,29 @@ import {
   WeeklyProgressItem,
 } from "@/data/mockData";
 import { WeeklyProgressTimeline } from "./WeeklyProgressTimeline";
+
+const defaultProgress: ProgressSummary = {
+  currentWeek: 0,
+  totalWeeks: 12,
+  percentComplete: 0,
+  hoursCompleted: 0,
+  targetHours: 240,
+  weeklyTargetHours: 20,
+};
+
+const defaultInternship: InternshipDetails = {
+  company: "",
+  role: "",
+  mentor: "",
+  mentorTitle: "",
+  mentorEmail: "",
+  location: "",
+  term: "",
+  startDate: "",
+  endDate: "",
+  status: "Pending",
+  stipend: "",
+};
 
 interface InternshipProgressViewProps {
   internship?: InternshipDetails;
@@ -34,12 +56,13 @@ interface InternshipProgressViewProps {
 }
 
 export function InternshipProgressView({
-  internship = mockStudentData.internship,
-  progress = mockStudentData.progress,
-  tasks = mockStudentData.tasks,
-  timeline = mockStudentData.weeklyTimeline,
+  internship = defaultInternship,
+  progress = defaultProgress,
+  tasks = [],
+  timeline = [],
   onNavigateToWeeklyReport,
 }: InternshipProgressViewProps) {
+
   const [taskFilter, setTaskFilter] = useState<
     "all" | "completed" | "pending"
   >("all");

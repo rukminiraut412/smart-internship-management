@@ -289,12 +289,18 @@ export interface BackendInternship {
 
   stipend?: string;
 
+  mentor_name?: string;
+  mentor_email?: string;
+  mentor_phone?: string;
+  required_skills?: string[];
+
   start_date?: string;
   end_date?: string;
 
   created_at: string;
   updated_at?: string;
 }
+
 
 export interface BackendProgressReport {
   id: string;
@@ -770,6 +776,12 @@ export const mentorsApi = {
     );
   },
 
+  getProfile: async (): Promise<MentorProfile> => {
+    return apiRequest<MentorProfile>(
+      "/api/mentors/me"
+    );
+  },
+
   updateProfile: async (payload: {
     name?: string;
     company_name?: string;
@@ -787,11 +799,21 @@ export const mentorsApi = {
   },
 
   getInterns: async (
-    mentorId: string
+    mentorId?: string
   ): Promise<MentorInternItem[]> => {
-    return apiRequest<MentorInternItem[]>(
-      `/api/mentors/${mentorId}/interns`
-    );
+    const endpoint = mentorId
+      ? `/api/mentors/${mentorId}/interns`
+      : "/api/mentors/interns";
+    return apiRequest<MentorInternItem[]>(endpoint);
+  },
+
+  getReports: async (
+    mentorId?: string
+  ): Promise<BackendProgressReport[]> => {
+    const endpoint = mentorId
+      ? `/api/mentors/${mentorId}/reports`
+      : "/api/mentors/reports";
+    return apiRequest<BackendProgressReport[]>(endpoint);
   },
 
   reviewReport: async (
@@ -829,19 +851,21 @@ export const mentorsApi = {
   },
 
   getEvaluations: async (
-    mentorId: string
+    mentorId?: string
   ): Promise<EvaluationItem[]> => {
-    return apiRequest<EvaluationItem[]>(
-      `/api/mentors/${mentorId}/evaluations`
-    );
+    const endpoint = mentorId
+      ? `/api/mentors/${mentorId}/evaluations`
+      : "/api/mentors/evaluations";
+    return apiRequest<EvaluationItem[]>(endpoint);
   },
 
   getTasks: async (
-    mentorId: string
+    mentorId?: string
   ): Promise<TaskItem[]> => {
-    return apiRequest<TaskItem[]>(
-      `/api/mentors/${mentorId}/tasks`
-    );
+    const endpoint = mentorId
+      ? `/api/mentors/${mentorId}/tasks`
+      : "/api/mentors/tasks";
+    return apiRequest<TaskItem[]>(endpoint);
   },
 
   createTask: async (payload: {
@@ -861,6 +885,7 @@ export const mentorsApi = {
     );
   },
 };
+
 
 // ============================================================================
 // 7. ADMIN API
@@ -1046,3 +1071,42 @@ export const adminApi = {
     );
   },
 };
+
+// ============================================================================
+// SYSTEM HEALTH & ALERTS
+// ============================================================================
+
+export interface BackendAlert {
+  id: string;
+  type?: string;
+  title: string;
+  message?: string;
+  status?: string;
+  severity?: string;
+  is_read?: boolean;
+  created_at?: string;
+  date?: string;
+}
+
+
+export async function healthCheck(): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/docs`, {
+      method: "GET",
+      headers: { Accept: "text/html,application/json" },
+    });
+    return res.ok || res.status === 200 || res.status === 404;
+  } catch {
+    return false;
+  }
+}
+
+export const alertsApi = {
+  list: async (): Promise<BackendAlert[]> => {
+    try {
+      return await apiRequest<BackendAlert[]>("/api/alerts");
+    } catch {
+      return [];
+    }
+  },
+};

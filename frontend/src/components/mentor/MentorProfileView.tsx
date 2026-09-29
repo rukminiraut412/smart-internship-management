@@ -16,13 +16,14 @@ interface Props {
 export function MentorProfileView({ initialProfile, onProfileUpdated }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: initialProfile?.name || "Dr. Marcus Vance",
-    email: initialProfile?.email || "m.vance@cloudscale.io",
-    company_name: initialProfile?.company_name || "CloudScale Distributed Systems",
-    job_title: initialProfile?.job_title || "Staff Systems Architect",
-    department: initialProfile?.department || "Platform Infrastructure",
-    phone: initialProfile?.phone || "+1 (555) 441-2099",
+    name: initialProfile?.name || "",
+    email: initialProfile?.email || "",
+    company_name: initialProfile?.company_name || "",
+    job_title: initialProfile?.job_title || "",
+    department: initialProfile?.department || "",
+    phone: initialProfile?.phone || "",
   });
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -58,20 +59,23 @@ export function MentorProfileView({ initialProfile, onProfileUpdated }: Props) {
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <div className="h-16 w-16 rounded-2xl bg-indigo-600 text-white font-bold text-xl flex items-center justify-center shadow-md">
-            {formData.name.slice(0, 2).toUpperCase()}
+            {(formData.name || "M").slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900">{formData.name}</h2>
+              <h2 className="text-lg font-bold text-slate-900">{formData.name || "Mentor Profile"}</h2>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                 Industry Mentor
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {formData.job_title} • {formData.company_name}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">{formData.email}</p>
+            {(formData.job_title || formData.company_name) && (
+              <p className="text-xs text-slate-500 mt-0.5">
+                {[formData.job_title, formData.company_name].filter(Boolean).join(" • ")}
+              </p>
+            )}
+            {formData.email && <p className="text-[11px] text-slate-400 mt-0.5">{formData.email}</p>}
           </div>
+
         </div>
 
         <button

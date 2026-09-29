@@ -8,7 +8,6 @@ import {
   UserIcon,
   XIcon,
 } from "@/components/common/Icons";
-import { mockStudentData } from "@/data/mockData";
 import { UserProfile } from "@/lib/api";
 
 interface TopNavbarProps {
@@ -30,15 +29,8 @@ export function TopNavbar({
   onLogout,
   onSearchChange,
 }: TopNavbarProps) {
-  const { student } = mockStudentData;
-
-  const displayName = currentUser
-    ? currentUser.full_name
-    : student.name;
-
-  const displayRole = currentUser
-    ? currentUser.role
-    : "Student";
+  const displayName = currentUser?.full_name || "";
+  const displayRole = currentUser?.role || "Student";
 
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -52,29 +44,8 @@ export function TopNavbar({
     .toUpperCase()
     .slice(0, 2);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Weekly Report Reminder",
-      desc: "Week 5 progress report window is open for submission.",
-      time: "2h ago",
-      type: "info",
-    },
-    {
-      id: 2,
-      title: "Mentor Evaluation Submitted",
-      desc: "Dr. Marcus Vance reviewed and approved your Week 4 milestone.",
-      time: "1d ago",
-      type: "success",
-    },
-    {
-      id: 3,
-      title: "Placement Verified",
-      desc: "CloudScale Distributed Systems internship credentials active.",
-      time: "3d ago",
-      type: "success",
-    },
-  ];
+  // Notifications are loaded from backend - no hardcoded data
+  const notifications: { id: number; title: string; desc: string; time: string; type: string }[] = [];
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">

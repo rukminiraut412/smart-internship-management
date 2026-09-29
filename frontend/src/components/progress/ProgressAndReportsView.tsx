@@ -11,10 +11,18 @@ import {
   ProgressSummary,
   TaskItem,
   WeeklyReport,
-  mockStudentData,
 } from "@/data/mockData";
 import { WeeklyReportForm } from "./WeeklyReportForm";
 import { ReportHistoryList } from "./ReportHistoryList";
+
+const emptyProgress: ProgressSummary = {
+  currentWeek: 0,
+  totalWeeks: 12,
+  percentComplete: 0,
+  hoursCompleted: 0,
+  targetHours: 240,
+  weeklyTargetHours: 20,
+};
 
 interface ProgressAndReportsViewProps {
   progress?: ProgressSummary;
@@ -26,13 +34,14 @@ interface ProgressAndReportsViewProps {
 }
 
 export function ProgressAndReportsView({
-  progress = mockStudentData.progress,
-  tasks = mockStudentData.tasks,
-  reports = mockStudentData.weeklyReports,
+  progress = emptyProgress,
+  tasks = [],
+  reports = [],
   internshipId,
   studentId,
   onReportSubmitted,
 }: ProgressAndReportsViewProps) {
+
   const [activeTab, setActiveTab] = useState<"submit" | "history">("submit");
   const [localSubmittedReports, setLocalSubmittedReports] = useState<WeeklyReport[]>([]);
 
